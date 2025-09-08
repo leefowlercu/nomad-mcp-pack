@@ -1,0 +1,49 @@
+# Example configuration file for nomad-mcp-pack
+#
+# Place this file in one of the following locations:
+# - ./config.yaml (current directory)
+# - ~/.nomad-mcp-pack/config.yaml (home directory)
+#
+# Configuration hierarchy (highest to lowest precedence):
+# 1. Command-line flags
+# 2. Environment variables (NOMAD_MCP_PACK_*)
+# 3. Configuration file (this file)
+# 4. Default values
+
+# MCP Registry URL
+mcp_registry_url: https://registry.modelcontextprotocol.io
+
+# Default output directory for generated packs
+output_dir: ./packs
+
+# Log level: debug, info, warn, error
+log_level: info
+
+# Environment: dev, nonprod, prod
+# - dev: text logging with source location
+# - nonprod/prod: JSON logging
+env: prod
+
+# Server-specific configuration
+server:
+  # Server address to bind to
+  addr: :8080
+  # Read timeout in seconds
+  read_timeout: 10
+  # Write timeout in seconds
+  write_timeout: 10
+
+# Watch-specific configuration
+watch:
+  # Poll interval in seconds (default: 300)
+  poll_interval: 300
+  # Comma-separated list of server names to filter (empty = all servers)
+  filter_names: ""
+  # Comma-separated list of package types to filter (default: npm,pypi,oci,nuget)
+  filter_package_types: "npm,pypi,oci,nuget"
+  # State file to persist watch state between runs
+  state_file: watch.json
+  # Maximum concurrent pack generations
+  max_concurrent: 5
+  # Enable TUI mode for interactive terminal interface
+  enable_tui: false

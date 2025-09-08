@@ -1,60 +1,60 @@
-package server
+package cmdserver
 
 import (
-	"github.com/spf13/cobra"
-)
+	"log/slog"
 
-var (
-	port         int
-	host         string
-	enableCORS   bool
-	tlsCert      string
-	tlsKey       string
-	readTimeout  int
-	writeTimeout int
+	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var ServerCmd = &cobra.Command{
 	Use:   "server",
 	Short: "Start a Nomad MCP Pack server",
 	Long: "Start a Nomad MCP Pack server that provides remote access to pack generation.\n\n" +
-		"The server exposes REST API endpoints for generating Nomad MCP Server Packs, " +
-		"listing MCP Servers, and inspecting MCP Server details.",
-	Example: `  # Start server on default port
+		"The server exposes a REST API endpoint for generating Nomad MCP Server Packs.",
+	Example: `  # Start server on default addr (from config/env/flag)
   nomad-mcp-pack server
   
-  # Start on custom port
-  nomad-mcp-pack server --port 9090
+  # Start on custom port (overrides config/env)
+  nomad-mcp-pack server --addr ":9090"
+	
+  # Start with custom timeouts
+  nomad-mcp-pack server --read-timeout 30 --write-timeout 30
   
-  # Enable CORS for web clients
-  nomad-mcp-pack server --enable-cors
-  
-  # Start with TLS
-  nomad-mcp-pack server --tls-cert server.crt --tls-key server.key`,
+  # Use environment variable to set address
+  NOMAD_MCP_PACK_SERVER_ADDR=":9090" nomad-mcp-pack server`,
 	RunE: runServer,
 }
 
 func init() {
-	ServerCmd.Flags().IntVarP(&port, "port", "p", 8080, "Port to listen on")
-	ServerCmd.Flags().StringVar(&host, "host", "0.0.0.0", "Host to bind to")
-	ServerCmd.Flags().BoolVar(&enableCORS, "enable-cors", false, "Enable CORS headers")
-	ServerCmd.Flags().StringVar(&tlsCert, "tls-cert", "", "Path to TLS certificate file")
-	ServerCmd.Flags().StringVar(&tlsKey, "tls-key", "", "Path to TLS key file")
-	ServerCmd.Flags().IntVar(&readTimeout, "read-timeout", 30, "Read timeout in seconds")
-	ServerCmd.Flags().IntVar(&writeTimeout, "write-timeout", 30, "Write timeout in seconds")
+	ServerCmd.Flags().String("addr", "", "Server address")
+	ServerCmd.Flags().Int("read-timeout", 0, "Read timeout in seconds")
+	ServerCmd.Flags().Int("write-timeout", 0, "Write timeout in seconds")
+
+	viper.BindPFlag("server.addr", ServerCmd.Flags().Lookup("addr"))
+	viper.BindPFlag("server.read_timeout", ServerCmd.Flags().Lookup("read-timeout"))
+	viper.BindPFlag("server.write_timeout", ServerCmd.Flags().Lookup("write-timeout"))
 }
 
 func runServer(cmd *cobra.Command, args []string) error {
-	// TODO: Call internal/server package implementation
-	// return server.Run(cmd.Context(), server.Options{
-	//     Port:         port,
-	//     Host:         host,
-	//     EnableCORS:   enableCORS,
-	//     TLSCert:      tlsCert,
-	//     TLSKey:       tlsKey,
-	//     ReadTimeout:  time.Duration(readTimeout) * time.Second,
-	//     WriteTimeout: time.Duration(writeTimeout) * time.Second,
-	// })
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return err
+	}
+
+	slog.Info("starting server",
+		"addr", cfg.Server.Addr,
+		"read_timeout", cfg.Server.ReadTimeout,
+		"write_timeout", cfg.Server.WriteTimeout,
+		"output_dir", cfg.OutputDir,
+		"mcp_registry_url", cfg.MCPRegistryURL,
+	)
+
+	slog.Debug("configuration sources",
+		"config_file", viper.ConfigFileUsed(),
+		"env", cfg.Env,
+	)
 
 	return nil
 }
