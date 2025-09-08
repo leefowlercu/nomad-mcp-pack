@@ -56,16 +56,16 @@ nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest
 nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed
 
 # Specify output directory
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest -o ./packs/astra-db
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --output-dir ./packs/astra-db
 
 # Dry run to preview without creating files
-nomad-mcp-pack generate io.github.modelcontextprotocol/filesystem@latest --dry-run
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
 
 # Force overwrite existing pack
-nomad-mcp-pack generate io.github.modelcontextprotocol/filesystem@1.0.2 --force
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed --force
 
 # Specify preferred package type when multiple are available
-nomad-mcp-pack generate io.github.example/multi-package@latest --package-type oci
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type oci
 ```
 
 #### Watch Mode
@@ -77,13 +77,19 @@ Continuously monitor the registry for new or updated servers:
 nomad-mcp-pack watch
 
 # Custom output directory and interval
-nomad-mcp-pack watch --output ./packs --interval 300
+nomad-mcp-pack watch --output-dir ./packs --poll-interval 300
 
 # Watch with filtering by package type (only supported types)
 nomad-mcp-pack watch --filter-package-type npm,oci
 
 # Watch specific servers by name
-nomad-mcp-pack watch --filter-names io.github.datastax/astra-db-mcp,io.github.example/server
+nomad-mcp-pack watch --filter-names io.github.datastax/astra-db-mcp
+
+# Enable Terminal UI mode
+nomad-mcp-pack watch --enable-tui
+
+# Dry run to see what would be generated
+nomad-mcp-pack watch --dry-run
 ```
 
 #### HTTP Server Mode
@@ -94,16 +100,16 @@ Run as an HTTP server for programmatic access:
 # Start on default port 8080
 nomad-mcp-pack server
 
-# Custom port
-nomad-mcp-pack server --port 9090
+# Custom address
+nomad-mcp-pack server --addr :9090
 
-# With TLS
-nomad-mcp-pack server --tls-cert server.crt --tls-key server.key
+# With custom timeouts
+nomad-mcp-pack server --read-timeout 30 --write-timeout 30
 ```
 
 ### Global Options
 
-- `--mcp-registry-addr`: Override the default MCP Registry URL (default: `https://registry.modelcontextprotocol.io`)
+- `--mcp-registry-url`: Override the default MCP Registry URL (default: `https://registry.modelcontextprotocol.io`)
 - `--help`: Show help for any command
 - `--version`: Display version information
 
