@@ -166,6 +166,8 @@ nomad-mcp-pack/
 ├── pkg/                     # Package `pkg` 
 │   ├── generate/            # Package `generate` (to be implemented)
 │   │   └── generate.go      # Generate Nomad MCP Server Packs functionality (to be implemented)
+│   └── registry/            # Package `registry` (to be implemented)
+│       └── registry.go      # Interface with the MCP Registry via HTTP API (to be implemented)
 ├── internal/                # Package `internal`
 │   ├── config/              # Package `ctxutils`
 │   │   └── config.go        # Internal Configuration utilities (Set Defaults, Read Config from File or Env)

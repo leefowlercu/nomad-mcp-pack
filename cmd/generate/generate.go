@@ -1,6 +1,10 @@
 package cmdgenerate
 
 import (
+	"fmt"
+	"log/slog"
+
+	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -19,8 +23,9 @@ var GenerateCmd = &cobra.Command{
 		"MCP Registry (default: https://registry.modelcontextprotocol.io) and creates a complete Nomad Pack with Job " +
 		"Templates, Variables, and Metadata.\n\n" +
 		"The syntax for the MCP Server argument is <mcp-server@version> where `mcp-server` is the name of the MCP Server and  `version` " +
-		"can either be a semver-formatted string or the keyword 'latest'. If a non-deprecated, non-deleted version can be found for the given MCP Server " +
-		"name the Nomad Pack will be generated. If there is no matching MCP Server Version found, or if there is a match but the matching " +
+		"can either be a semver-formatted string or the keyword 'latest'. Using the keyword 'latest' will attempt to find the latest non-deprecated, " +
+		"non-deleted version. If a non-deprecated, non-deleted version can be found for the given MCP Server Version " +
+		"the Nomad Pack will be generated. If there is no matching MCP Server Version found, or if there is a match but the matching " +
 		"MCP Server Version has been declared deprecated or deleted the command will error and indicate the reason.",
 	Example: `  # Generate a pack for a specific version of an MCP server
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed
@@ -53,24 +58,46 @@ func init() {
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
-	// TODO: Parse argument stanzas
+	// Parse the server specification argument
+	serverSpec, err := genutils.ParseServerSpec(args[0])
+	if err != nil {
+		return fmt.Errorf("invalid server specification: %w", err)
+	}
 
 	// Get output directory from viper (respects flag > env > config > default precedence)
-	// outputDir := viper.GetString("output_dir")
+	outputDir := viper.GetString("output_dir")
+	registryURL := viper.GetString("mcp_registry_url")
 
-	// TODO: Call internal/generate package implementation
-	// return generate.Run(cmd.Context(), serverID, generate.Options{
-	//     OutputDir:   viper.GetString("output_dir"),
+	slog.Info("generating nomad pack",
+		"server", serverSpec.ServerName,
+		"version", serverSpec.Version,
+		"output_dir", outputDir,
+		"registry_url", registryURL,
+		"dry_run", dryRun,
+		"force", force,
+		"package_type", packageType,
+	)
+
+	// Handle latest version resolution
+	if serverSpec.IsLatest() {
+		slog.Debug("resolving latest version", "server", serverSpec.ServerName)
+		// TODO: Query registry for latest non-deprecated, non-deleted version
+	}
+
+	// TODO: Call pkg/generate package implementation
+	// return generate.Run(cmd.Context(), serverSpec, generate.Options{
+	//     OutputDir:   outputDir,
 	//     DryRun:      dryRun,
 	//     Force:       force,
 	//     PackageType: packageType,
+	//     RegistryURL: registryURL,
 	// })
 
 	// TODO: Handle Error situations
-	// Error: MCP Server Version argument malformed
 	// Error: MCP Server Version with specified name not found
 	// Error: MCP Server Version specified was found but marked deprecated
 	// Error: MCP Server Version specified was found but marked deleted
 
+	fmt.Printf("Would generate pack for %s\n", serverSpec)
 	return nil
 }
