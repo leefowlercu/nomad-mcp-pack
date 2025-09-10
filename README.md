@@ -266,8 +266,8 @@ nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
 # Force overwrite existing pack
 nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed --force
 
-# Specify preferred package type when multiple are available
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type oci
+# Specify package type (default 'oci' (Docker))
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm
 ```
 
 #### Watch Mode
@@ -321,12 +321,12 @@ Each generated Nomad Pack includes:
 
 ```
 <server-id>/
-├── metadata.hcl           # Pack metadata and description
-├── variables.hcl          # Input variables with validation
-├── outputs.hcl            # Output values
+├── metadata.hcl              # Pack metadata and description
+├── variables.hcl             # Input variables with validation
+├── outputs.tpl               # Output template
 ├── templates/
-│   └── server.nomad.tpl   # Main Nomad job template
-└── README.md              # Pack documentation
+│   └── mcp-server.nomad.tpl  # Main Nomad job template
+└── README.md                 # Pack documentation
 ```
 
 ## Development
