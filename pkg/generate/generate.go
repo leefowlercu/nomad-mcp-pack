@@ -76,17 +76,14 @@ func (g *Generator) Generate(ctx context.Context) error {
 }
 
 func (g *Generator) generatePackdir(ctx context.Context) error {
-	// Check if pack directory already exists
 	if _, err := os.Stat(g.packDir); err == nil && !g.options.Force {
 		return fmt.Errorf("pack directory %s already exists (use --force to overwrite)", g.packDir)
 	}
 
-	// Create pack directory
 	if err := os.MkdirAll(g.packDir, 0755); err != nil {
 		return fmt.Errorf("failed to create pack directory: %w", err)
 	}
 
-	// Create templates directory
 	templatesDir := filepath.Join(g.packDir, "templates")
 	if err := os.MkdirAll(templatesDir, 0755); err != nil {
 		return fmt.Errorf("failed to create templates directory: %w", err)
@@ -96,19 +93,16 @@ func (g *Generator) generatePackdir(ctx context.Context) error {
 }
 
 func (g *Generator) generateArchive(ctx context.Context) error {
-	// Create temporary directory for pack files
 	tempDir, err := os.MkdirTemp("", "nomad-mcp-pack-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	// Set pack directory to temp directory for file generation
 	originalPackDir := g.packDir
 	packName := sanitizePackName(g.serverSpec.ServerName) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
 	g.packDir = filepath.Join(tempDir, packName)
 
-	// Create pack and templates directory in temp location
 	if err := os.MkdirAll(g.packDir, 0755); err != nil {
 		return fmt.Errorf("failed to create temporary pack directory: %w", err)
 	}
@@ -118,20 +112,16 @@ func (g *Generator) generateArchive(ctx context.Context) error {
 		return fmt.Errorf("failed to create temporary templates directory: %w", err)
 	}
 
-	// Generate files to temp directory
 	if err := g.generateFiles(); err != nil {
 		return err
 	}
 
-	// Restore original pack dir for archive creation
 	g.packDir = originalPackDir
 
-	// Create archive from temp directory
 	return g.createArchive(filepath.Join(tempDir, packName))
 }
 
 func (g *Generator) generateFiles() error {
-	// Generate each file
 	if err := g.generateMetadata(); err != nil {
 		return fmt.Errorf("failed to generate metadata.hcl: %w", err)
 	}
@@ -223,13 +213,11 @@ func (g *Generator) generateJobTemplate() error {
 func (g *Generator) writeFile(relativePath, content string) error {
 	fullPath := filepath.Join(g.packDir, relativePath)
 
-	// Create directory if needed
 	dir := filepath.Dir(fullPath)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
-	// Write file
 	if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", fullPath, err)
 	}

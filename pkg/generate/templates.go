@@ -27,7 +27,6 @@ var (
 func init() {
 	var err error
 
-	// Template functions
 	funcMap := template.FuncMap{
 		"lower":   strings.ToLower,
 		"upper":   strings.ToUpper,
@@ -35,7 +34,6 @@ func init() {
 		"base":    filepath.Base,
 	}
 
-	// Parse main templates
 	metadataTemplate, err = template.New("metadata.hcl.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/metadata.hcl.tmpl")
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse metadata template: %v", err))
@@ -56,7 +54,6 @@ func init() {
 		panic(fmt.Sprintf("failed to parse readme template: %v", err))
 	}
 
-	// Parse job templates for each package type
 	jobTemplates = make(map[string]*template.Template)
 	packageTypes := []string{"oci", "npm", "pypi", "nuget"}
 	
@@ -150,7 +147,6 @@ func renderVariablesTemplate(server *v0.ServerJSON, pkg *model.Package) (string,
 		PackageVersion: pkg.Version,
 	}
 
-	// Combine runtime and package arguments
 	data.Arguments = append(pkg.RuntimeArguments, pkg.PackageArguments...)
 
 	var buf bytes.Buffer
@@ -169,7 +165,6 @@ func renderJobTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error
 
 	registryURL := pkg.RegistryBaseURL
 	if registryURL == "" {
-		// Use default registry URLs based on package type
 		switch pkg.RegistryType {
 		case "npm":
 			registryURL = "https://registry.npmjs.org"
@@ -267,7 +262,6 @@ func formatArguments(args []model.Argument) string {
 		if arg.Type == model.ArgumentTypePositional {
 			parts = append(parts, fmt.Sprintf("var.%s", strings.ToLower(arg.Name)))
 		} else {
-			// Named arguments
 			if arg.Name != "" {
 				parts = append(parts, fmt.Sprintf("--%s", arg.Name))
 				parts = append(parts, fmt.Sprintf("var.%s", strings.ToLower(arg.Name)))

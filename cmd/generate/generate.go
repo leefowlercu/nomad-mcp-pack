@@ -40,7 +40,7 @@ var GenerateCmd = &cobra.Command{
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest
   
   # Generate to a specific directory
-  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed -o ./astra-packs
+  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed --output-dir ./astra-packs
   
   # Dry run to see what would be generated
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
@@ -48,7 +48,7 @@ var GenerateCmd = &cobra.Command{
   # Force overwrite existing pack
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force
   
-  # Specify package type
+  # Specify package type (default 'oci' (Docker))
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm`,
 	Args: cobra.ExactArgs(1),
 	RunE: runGenerate,
