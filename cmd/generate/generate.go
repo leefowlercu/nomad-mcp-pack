@@ -58,13 +58,11 @@ func init() {
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
-	// Parse the server specification argument
 	serverSpec, err := genutils.ParseServerSpec(args[0])
 	if err != nil {
 		return fmt.Errorf("invalid server specification: %w", err)
 	}
 
-	// Get output directory from viper (respects flag > env > config > default precedence)
 	outputDir := viper.GetString("output_dir")
 	registryURL := viper.GetString("mcp_registry_url")
 
@@ -78,7 +76,6 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		"package_type", packageType,
 	)
 
-	// Handle latest version resolution
 	if serverSpec.IsLatest() {
 		slog.Debug("resolving latest version", "server", serverSpec.ServerName)
 		// TODO: Query registry for latest non-deprecated, non-deleted version

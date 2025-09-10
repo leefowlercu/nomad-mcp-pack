@@ -1,0 +1,3 @@
+[submodule "tests/integration/registry"]
+	path = tests/integration/registry
+	url = https://github.com/modelcontextprotocol/registry.git

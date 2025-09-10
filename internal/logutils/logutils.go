@@ -42,18 +42,15 @@ func SetupLogger(cfg *config.Config) *slog.Logger {
 		handler = slog.NewJSONHandler(os.Stderr, opts)
 	}
 
-	// Wrap with custom handler
 	handler = &ContextHandler{Handler: handler}
 
 	return slog.New(handler)
 }
 
-// Custom SLog Handler to automatically extract and log contextual values
 type ContextHandler struct {
 	Handler slog.Handler
 }
 
-// Force implementation of the slog.Handler interface
 var _ slog.Handler = (*ContextHandler)(nil)
 
 // Custom Handle method that groups and automatically logs contextual values
