@@ -75,6 +75,7 @@ export NOMAD_MCP_PACK_LOG_LEVEL=error
 
 # Cleanup function
 cleanup() {
+    echo ""
     print_step "Cleaning up demo artifacts"
     cd "$ORIGINAL_DIR"
     rm -rf "$DEMO_OUTPUT_DIR"
