@@ -287,6 +287,37 @@ make registry-init              # Initialize registry submodule only
 - **Data Adaptive**: Work gracefully with minimal or empty registry data
 - **Error Resilient**: Handle network issues, timeouts, and API changes
 
+## Running Demonstrations
+
+The project includes interactive demonstration scripts that showcase the functionality of `nomad-mcp-pack` commands. These demos are designed for presentations, training, and testing.
+
+### Available Demos
+
+#### Generate Command Demo
+Located in `demo/demo-generate.sh`, this comprehensive demo showcases all features of the `generate` command including version resolution, output types, package types, and error handling.
+
+**Quick Start:**
+```bash
+# Interactive mode (recommended for presentations)
+./demo/demo-generate.sh
+
+# Automatic mode (for testing)
+./demo/demo-generate.sh auto
+
+# Show help
+./demo/demo-generate.sh help
+```
+
+For detailed information about the demo, see [demo/README-DEMO.md](demo/README-DEMO.md).
+
+### Demo Features
+- **Interactive presentations** with pause points for command explanations
+- **Clean output** with suppressed logging for presentation clarity
+- **Automatic cleanup** of all generated artifacts
+- **Multiple demo servers** to showcase different package types
+- **Error handling** demonstrations
+
+Additional demos for `watch` and `server` commands will be added as those features are implemented.
 
 ## Generated Pack Structure
 
