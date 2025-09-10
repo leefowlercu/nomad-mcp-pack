@@ -47,7 +47,7 @@ This will build the binary and install it to `~/go/bin/`.
 
 ## Usage
 
-### Generate Command
+### ✅ Generate Command (Implemented)
 
 The `generate` command creates Nomad Packs from MCP servers registered in the official registry:
 
@@ -76,6 +76,51 @@ nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type np
 # Allow deprecated servers
 nomad-mcp-pack generate deprecated-server/example@latest --allow-deprecated
 ```
+
+### 🚧 Watch Mode (Planned)
+
+Continuously monitor the registry for new or updated servers:
+
+```bash
+# Watch with default settings
+nomad-mcp-pack watch
+
+# Custom output directory and interval
+nomad-mcp-pack watch --output-dir ./packs --poll-interval 300
+
+# Watch with filtering by package type (only supported types)
+nomad-mcp-pack watch --filter-package-type npm,oci
+
+# Watch specific servers by name
+nomad-mcp-pack watch --filter-names io.github.datastax/astra-db-mcp
+
+# Enable Terminal UI mode
+nomad-mcp-pack watch --enable-tui
+
+# Dry run to see what would be generated
+nomad-mcp-pack watch --dry-run
+```
+
+### 🚧 HTTP Server Mode (Planned)
+
+Run as an HTTP server for programmatic access:
+
+```bash
+# Start on default port 8080
+nomad-mcp-pack server
+
+# Custom address
+nomad-mcp-pack server --addr :9090
+
+# With custom timeouts
+nomad-mcp-pack server --read-timeout 30 --write-timeout 30
+```
+
+### Global Options
+
+- `--mcp-registry-url`: Override the default MCP Registry URL (default: `https://registry.modelcontextprotocol.io`)
+- `--help`: Show help for any command
+- `--version`: Display version information
 
 ### Generated Pack Structure
 
@@ -242,78 +287,6 @@ make registry-init              # Initialize registry submodule only
 - **Data Adaptive**: Work gracefully with minimal or empty registry data
 - **Error Resilient**: Handle network issues, timeouts, and API changes
 
-## Usage
-
-> **⚠️ Important**: The commands below show the intended usage. Core functionality is still under development and these commands will not work until the implementation is complete.
-
-### Basic Commands
-
-#### Generate a Nomad Pack
-
-```bash
-# Generate pack for the latest version of a server
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest
-
-# Generate pack for a specific version
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed
-
-# Specify output directory
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --output-dir ./packs/astra-db
-
-# Dry run to preview without creating files
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
-
-# Force overwrite existing pack
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed --force
-
-# Specify package type (default 'oci' (Docker))
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm
-```
-
-#### Watch Mode
-
-Continuously monitor the registry for new or updated servers:
-
-```bash
-# Watch with default settings
-nomad-mcp-pack watch
-
-# Custom output directory and interval
-nomad-mcp-pack watch --output-dir ./packs --poll-interval 300
-
-# Watch with filtering by package type (only supported types)
-nomad-mcp-pack watch --filter-package-type npm,oci
-
-# Watch specific servers by name
-nomad-mcp-pack watch --filter-names io.github.datastax/astra-db-mcp
-
-# Enable Terminal UI mode
-nomad-mcp-pack watch --enable-tui
-
-# Dry run to see what would be generated
-nomad-mcp-pack watch --dry-run
-```
-
-#### HTTP Server Mode
-
-Run as an HTTP server for programmatic access:
-
-```bash
-# Start on default port 8080
-nomad-mcp-pack server
-
-# Custom address
-nomad-mcp-pack server --addr :9090
-
-# With custom timeouts
-nomad-mcp-pack server --read-timeout 30 --write-timeout 30
-```
-
-### Global Options
-
-- `--mcp-registry-url`: Override the default MCP Registry URL (default: `https://registry.modelcontextprotocol.io`)
-- `--help`: Show help for any command
-- `--version`: Display version information
 
 ## Generated Pack Structure
 

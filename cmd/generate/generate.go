@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
 	"github.com/leefowlercu/nomad-mcp-pack/pkg/generate"
 	"github.com/leefowlercu/nomad-mcp-pack/pkg/registry"
@@ -56,14 +57,11 @@ var GenerateCmd = &cobra.Command{
 
 func init() {
 	GenerateCmd.Flags().StringVar(&packageType, "package-type", "oci", "Preferred package type {npm|pypi|oci|nuget}")
-	GenerateCmd.Flags().String("output-dir", "", "Output directory for the generated pack (itself, a directory)")
-	GenerateCmd.Flags().String("output-type", "", "Output type {packdir|archive}")
+	GenerateCmd.Flags().String("output-dir", config.DefaultConfig.OutputDir, "Output directory for the generated pack (itself, a directory)")
+	GenerateCmd.Flags().String("output-type", config.DefaultConfig.OutputType, "Output type {packdir|archive}")
 	GenerateCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be generated without writing files")
 	GenerateCmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing pack if it exists")
 	GenerateCmd.Flags().BoolVar(&allowDeprecated, "allow-deprecated", false, "Allow generation of packs for deprecated servers")
-
-	viper.BindPFlag("output_dir", GenerateCmd.Flags().Lookup("output-dir"))
-	viper.BindPFlag("output_type", GenerateCmd.Flags().Lookup("output-type"))
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {

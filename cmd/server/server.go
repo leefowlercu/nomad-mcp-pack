@@ -28,13 +28,9 @@ var ServerCmd = &cobra.Command{
 }
 
 func init() {
-	ServerCmd.Flags().String("addr", "", "Server address")
-	ServerCmd.Flags().Int("read-timeout", 0, "Read timeout in seconds")
-	ServerCmd.Flags().Int("write-timeout", 0, "Write timeout in seconds")
-
-	viper.BindPFlag("server.addr", ServerCmd.Flags().Lookup("addr"))
-	viper.BindPFlag("server.read_timeout", ServerCmd.Flags().Lookup("read-timeout"))
-	viper.BindPFlag("server.write_timeout", ServerCmd.Flags().Lookup("write-timeout"))
+	ServerCmd.Flags().String("addr", config.DefaultConfig.ServerAddr, "Server address")
+	ServerCmd.Flags().Int("read-timeout", config.DefaultConfig.ServerReadTimeout, "Read timeout in seconds")
+	ServerCmd.Flags().Int("write-timeout", config.DefaultConfig.ServerWriteTimeout, "Write timeout in seconds")
 }
 
 func runServer(cmd *cobra.Command, args []string) error {

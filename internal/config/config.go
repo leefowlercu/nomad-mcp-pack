@@ -31,6 +31,38 @@ const (
 	OutputTypeArchive OutputType = "archive"
 )
 
+var DefaultConfig = struct {
+	MCPRegistryURL          string
+	OutputDir               string
+	OutputType              string
+	LogLevel                string
+	Env                     string
+	ServerAddr              string
+	ServerReadTimeout       int
+	ServerWriteTimeout      int
+	WatchPollInterval       int
+	WatchFilterNames        string
+	WatchFilterPackageTypes string
+	WatchStateFile          string
+	WatchMaxConcurrent      int
+	WatchEnableTUI          bool
+}{
+	MCPRegistryURL:          "https://registry.modelcontextprotocol.io",
+	OutputDir:               "./packs",
+	OutputType:              "packdir",
+	LogLevel:                "info",
+	Env:                     "prod",
+	ServerAddr:              ":8080",
+	ServerReadTimeout:       10,
+	ServerWriteTimeout:      10,
+	WatchPollInterval:       300,
+	WatchFilterNames:        "",
+	WatchFilterPackageTypes: "npm,pypi,oci,nuget",
+	WatchStateFile:          "watch.json",
+	WatchMaxConcurrent:      5,
+	WatchEnableTUI:          false,
+}
+
 type ServerConfig struct {
 	Addr         string `mapstructure:"addr"`
 	ReadTimeout  int    `mapstructure:"read_timeout"`
@@ -62,20 +94,20 @@ func InitConfig() {
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("$HOME/.nomad-mcp-pack/")
 
-	viper.SetDefault("mcp_registry_url", "https://registry.modelcontextprotocol.io")
-	viper.SetDefault("output_dir", "./packs")
-	viper.SetDefault("output_type", "packdir")
-	viper.SetDefault("log_level", "info")
-	viper.SetDefault("env", "prod")
-	viper.SetDefault("server.addr", ":8080")
-	viper.SetDefault("server.read_timeout", 10)
-	viper.SetDefault("server.write_timeout", 10)
-	viper.SetDefault("watch.poll_interval", 300)
-	viper.SetDefault("watch.filter_names", "")
-	viper.SetDefault("watch.filter_package_types", "npm,pypi,oci,nuget")
-	viper.SetDefault("watch.state_file", "watch.json")
-	viper.SetDefault("watch.max_concurrent", 5)
-	viper.SetDefault("watch.enable_tui", false)
+	viper.SetDefault("mcp_registry_url", DefaultConfig.MCPRegistryURL)
+	viper.SetDefault("output_dir", DefaultConfig.OutputDir)
+	viper.SetDefault("output_type", DefaultConfig.OutputType)
+	viper.SetDefault("log_level", DefaultConfig.LogLevel)
+	viper.SetDefault("env", DefaultConfig.Env)
+	viper.SetDefault("server.addr", DefaultConfig.ServerAddr)
+	viper.SetDefault("server.read_timeout", DefaultConfig.ServerReadTimeout)
+	viper.SetDefault("server.write_timeout", DefaultConfig.ServerWriteTimeout)
+	viper.SetDefault("watch.poll_interval", DefaultConfig.WatchPollInterval)
+	viper.SetDefault("watch.filter_names", DefaultConfig.WatchFilterNames)
+	viper.SetDefault("watch.filter_package_types", DefaultConfig.WatchFilterPackageTypes)
+	viper.SetDefault("watch.state_file", DefaultConfig.WatchStateFile)
+	viper.SetDefault("watch.max_concurrent", DefaultConfig.WatchMaxConcurrent)
+	viper.SetDefault("watch.enable_tui", DefaultConfig.WatchEnableTUI)
 
 	viper.SetEnvPrefix("NOMAD_MCP_PACK")
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
