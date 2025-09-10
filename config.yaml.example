@@ -16,6 +16,11 @@ mcp_registry_url: https://registry.modelcontextprotocol.io
 # Default output directory for generated packs
 output_dir: ./packs
 
+# Output type: packdir, archive
+# - packdir: Generate packs as directories (default)
+# - archive: Generate packs as ZIP archives
+output_type: packdir
+
 # Log level: debug, info, warn, error
 log_level: info
 

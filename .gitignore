@@ -34,3 +34,6 @@ go.work.sum
 # Agent Instructions
 CLAUDE.md
 AGENTS.md
+
+# Generated Test Packs
+test-packs/

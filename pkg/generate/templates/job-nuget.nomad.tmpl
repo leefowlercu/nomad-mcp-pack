@@ -1,0 +1,97 @@
+job "[[ template "job_name" . ]]" {
+  datacenters = [[ .my.datacenters | toJson ]]
+  region      = "[[ .my.region ]]"
+  type        = "service"
+  
+  group "mcp-server" {
+    count = [[ .my.count ]]
+
+    network {
+      port "mcp" {
+        static = 3000
+      }
+    }
+
+    service {
+      name = "[[ template "job_name" . ]]-mcp"
+      port = "mcp"
+      
+      check {
+        type     = "http"
+        path     = "/health"
+        interval = "10s"
+        timeout  = "2s"
+      }
+    }
+
+    task "{{.TaskName}}" {
+      driver = "exec"
+
+      config {
+        command = "/bin/bash"
+        args    = ["local/run.sh"]
+      }
+
+      {{- if .Environment}}
+      env {
+        DOTNET_ROOT = "${NOMAD_TASK_DIR}/local/dotnet"
+        PATH = "${NOMAD_TASK_DIR}/local/dotnet:${PATH}"
+        {{- range .Environment}}
+        {{.Name}} = "[[ .my.{{.Name | lower}} ]]"
+        {{- end}}
+      }
+      {{- else}}
+      env {
+        DOTNET_ROOT = "${NOMAD_TASK_DIR}/local/dotnet"
+        PATH = "${NOMAD_TASK_DIR}/local/dotnet:${PATH}"
+      }
+      {{- end}}
+
+      template {
+        data = <<EOF
+#!/bin/bash
+set -e
+
+# Install .NET tool
+dotnet tool install {{.PackageID}} --version {{.PackageVersion}} --tool-path ${NOMAD_TASK_DIR}/local/tools
+
+# Run the MCP server
+exec ${NOMAD_TASK_DIR}/local/tools/{{.PackageID | base}} \
+{{- if .RuntimeArgs}}
+{{- range .RuntimeArgs}}
+{{- if eq .Type "positional"}}
+  "[[ .my.{{.Name | lower}} ]]" \
+{{- else}}
+  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+{{- end}}
+{{- end}}
+{{- end}}
+{{- if .PackageArgs}}
+{{- range .PackageArgs}}
+{{- if eq .Type "positional"}}
+  "[[ .my.{{.Name | lower}} ]]" \
+{{- else}}
+  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+{{- end}}
+{{- end}}
+{{- end}}
+EOF
+        destination = "local/run.sh"
+        perms       = "755"
+      }
+
+      resources {
+        cpu    = [[ .my.cpu ]]
+        memory = [[ .my.memory ]]
+      }
+
+      {{- if .HasTransport}}
+      {{- if eq .Transport.Type "stdio"}}
+      # MCP Server configured for stdio transport
+      {{- else if eq .Transport.Type "sse"}}
+      # MCP Server configured for SSE transport
+      {{- end}}
+      {{- end}}
+    }
+  }
+}

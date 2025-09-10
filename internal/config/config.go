@@ -24,6 +24,13 @@ const (
 	EnvProd    Env = "prod"
 )
 
+type OutputType string
+
+const (
+	OutputTypePackdir OutputType = "packdir"
+	OutputTypeArchive OutputType = "archive"
+)
+
 type ServerConfig struct {
 	Addr         string `mapstructure:"addr"`
 	ReadTimeout  int    `mapstructure:"read_timeout"`
@@ -42,6 +49,7 @@ type WatchConfig struct {
 type Config struct {
 	MCPRegistryURL string       `mapstructure:"mcp_registry_url"`
 	OutputDir      string       `mapstructure:"output_dir"`
+	OutputType     OutputType   `mapstructure:"output_type"`
 	LogLevel       LogLevel     `mapstructure:"log_level"`
 	Env            Env          `mapstructure:"env"`
 	Server         ServerConfig `mapstructure:"server"`
@@ -56,6 +64,7 @@ func InitConfig() {
 
 	viper.SetDefault("mcp_registry_url", "https://registry.modelcontextprotocol.io")
 	viper.SetDefault("output_dir", "./packs")
+	viper.SetDefault("output_type", "packdir")
 	viper.SetDefault("log_level", "info")
 	viper.SetDefault("env", "prod")
 	viper.SetDefault("server.addr", ":8080")
@@ -92,6 +101,12 @@ func GetConfig() (*Config, error) {
 	case EnvDev, EnvNonProd, EnvProd:
 	default:
 		return nil, fmt.Errorf("invalid env: %s (must be dev, nonprod, or prod)", cfg.Env)
+	}
+
+	switch cfg.OutputType {
+	case OutputTypePackdir, OutputTypeArchive:
+	default:
+		return nil, fmt.Errorf("invalid output_type: %s (must be packdir or archive)", cfg.OutputType)
 	}
 
 	return &cfg, nil

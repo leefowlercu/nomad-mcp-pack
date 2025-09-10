@@ -1,0 +1,12 @@
+Deployed [[ .nomad_pack.pack.name ]] successfully
+
+{{- if .mcp_server }}
+Job name: [[ .mcp_server.job_name ]]
+Job ID:   [[ .mcp_server.job_id ]]
+{{- end}}
+
+The MCP server "{{.ServerName}}" has been deployed to Nomad.
+
+{{- if .mcp_server.service_name }}
+Service: [[ .mcp_server.service_name ]]
+{{- end}}

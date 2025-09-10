@@ -1,0 +1,13 @@
+app {
+  {{- if .AppURL}}
+  url = "{{.AppURL}}"
+  {{- else}}
+  url = "https://registry.modelcontextprotocol.io"
+  {{- end}}
+}
+
+pack {
+  name        = "{{.PackName}}"
+  description = "{{.PackDescription}}"
+  version     = "{{.PackVersion}}"
+}

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/pkg/generate"
 	"github.com/leefowlercu/nomad-mcp-pack/pkg/registry"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
@@ -47,20 +48,22 @@ var GenerateCmd = &cobra.Command{
   # Force overwrite existing pack
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force
   
-  # Specify preferred package type when multiple are available
-  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type oci`,
+  # Specify package type
+  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm`,
 	Args: cobra.ExactArgs(1),
 	RunE: runGenerate,
 }
 
 func init() {
-	GenerateCmd.Flags().StringP("output-dir", "o", "", "Output directory for the generated pack directory")
+	GenerateCmd.Flags().StringVar(&packageType, "package-type", "oci", "Preferred package type {npm|pypi|oci|nuget}")
+	GenerateCmd.Flags().String("output-dir", "", "Output directory for the generated pack (itself, a directory)")
+	GenerateCmd.Flags().String("output-type", "", "Output type {packdir|archive}")
 	GenerateCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be generated without writing files")
 	GenerateCmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing pack if it exists")
-	GenerateCmd.Flags().StringVar(&packageType, "package-type", "oci", "Preferred package type {npm|pypi|oci|nuget}")
 	GenerateCmd.Flags().BoolVar(&allowDeprecated, "allow-deprecated", false, "Allow generation of packs for deprecated servers")
 
 	viper.BindPFlag("output_dir", GenerateCmd.Flags().Lookup("output-dir"))
+	viper.BindPFlag("output_type", GenerateCmd.Flags().Lookup("output-type"))
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
@@ -73,12 +76,14 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 
 	outputDir := viper.GetString("output_dir")
+	outputType := viper.GetString("output_type")
 	registryURL := viper.GetString("mcp_registry_url")
 
 	slog.Info("generating nomad pack",
 		"server", serverSpec.ServerName,
 		"version", serverSpec.Version,
 		"output_dir", outputDir,
+		"output_type", outputType,
 		"registry_url", registryURL,
 		"dry_run", dryRun,
 		"force", force,
@@ -147,20 +152,30 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 			serverSpec.ServerName, server.Version, packageType, strings.Join(availableTypes, ", "))
 	}
 
-	// TODO: Call pkg/generate package implementation
-	// return generate.Run(cmd.Context(), serverSpec, generate.Options{
-	//     OutputDir:   outputDir,
-	//     DryRun:      dryRun,
-	//     Force:       force,
-	//     PackageType: packageType,
-	//     RegistryURL: registryURL,
-	// })
+	// Generate the Nomad Pack
+	opts := generate.Options{
+		OutputDir:  outputDir,
+		OutputType: outputType,
+		DryRun:     dryRun,
+		Force:      force,
+	}
 
-	// TODO: Handle Error situations
-	// Error: MCP Server Version with specified name not found
-	// Error: MCP Server Version specified was found but marked deprecated
-	// Error: MCP Server Version specified was found but marked deleted
+	err = generate.Run(cmd.Context(), server, serverSpec, packageType, opts)
+	if err != nil {
+		return fmt.Errorf("failed to generate pack: %w", err)
+	}
 
-	fmt.Printf("Would generate pack for %s\n", serverSpec)
+	if dryRun {
+		slog.Info("dry run completed successfully")
+	} else {
+		packName := fmt.Sprintf("%s-%s-%s",
+			strings.ReplaceAll(serverSpec.ServerName, "/", "-"),
+			serverSpec.Version,
+			packageType)
+		slog.Info("pack generated successfully",
+			"pack_name", packName,
+			"output_dir", outputDir)
+	}
+
 	return nil
 }
