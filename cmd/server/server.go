@@ -13,17 +13,14 @@ var ServerCmd = &cobra.Command{
 	Short: "Start a Nomad MCP Pack server",
 	Long: "Start a Nomad MCP Pack server that provides remote access to pack generation.\n\n" +
 		"The server exposes a REST API endpoint for generating Nomad MCP Server Packs.",
-	Example: `  # Start server on default addr (from config/env/flag)
+	Example: `  # Start server with default settings
   nomad-mcp-pack server
   
-  # Start on custom port (overrides config/env)
+  # Start on custom port
   nomad-mcp-pack server --addr ":9090"
 	
   # Start with custom timeouts
-  nomad-mcp-pack server --read-timeout 30 --write-timeout 30
-  
-  # Use environment variable to set address
-  NOMAD_MCP_PACK_SERVER_ADDR=":9090" nomad-mcp-pack server`,
+  nomad-mcp-pack server --read-timeout 30 --write-timeout 30`,
 	RunE: runServer,
 }
 

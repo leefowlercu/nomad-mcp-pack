@@ -14,7 +14,7 @@ var (
 var WatchCmd = &cobra.Command{
 	Use:   "watch",
 	Short: "Continuously poll the configured MCP Registry and generate Nomad Packs for new/updated MCP Servers",
-	Long: "Watch the configured MCP Registry (default: https://registry.modelcontextprotocol.io) for new or updated MCP Servers and automatically generate Nomad Packs.\n\n" +
+	Long: "\nWatch the configured MCP Registry (default: https://registry.modelcontextprotocol.io) for new or updated MCP Servers and automatically generate Nomad Packs.\n\n" +
 		"This command continuously polls the configured MCP Registry at the specified interval, tracks state to avoid regenerating unchanged packs, " +
 		"and supports filtering options.",
 	Example: `  # Watch all servers with default settings
