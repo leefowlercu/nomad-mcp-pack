@@ -1,9 +1,18 @@
 package cmdwatch
 
 import (
+	"context"
+	"errors"
+	"fmt"
 	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/watch"
+	"github.com/leefowlercu/nomad-mcp-pack/pkg/generate"
+	"github.com/leefowlercu/nomad-mcp-pack/pkg/registry"
 	"github.com/spf13/cobra"
 )
 
@@ -49,22 +58,41 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	slog.Info("starting watch mode",
-		"output_dir", cfg.OutputDir,
-		"interval", cfg.Watch.PollInterval,
-		"filter_names", cfg.Watch.FilterNames,
-		"filter_package_types", cfg.Watch.FilterPackageTypes,
-		"state_file", cfg.Watch.StateFile,
-		"max_concurrent", cfg.Watch.MaxConcurrent,
-		"enable_tui", cfg.Watch.EnableTUI,
-		"dry_run", dryRun,
-	)
+	client, err := registry.NewClient(cfg.MCPRegistryURL)
+	if err != nil {
+		return fmt.Errorf("failed to create registry client: %w", err)
+	}
 
-	// TODO: Implement watch functionality
-	// - Poll registry at interval
-	// - Filter servers based on configuration
-	// - Track state to avoid regenerating unchanged packs
-	// - Generate packs for new/updated servers
+	generateOpts := generate.Options{
+		OutputDir:  cfg.OutputDir,
+		OutputType: string(cfg.OutputType),
+		DryRun:     dryRun,
+		Force:      false,
+	}
 
+	watcher, err := watch.NewWatcher(cfg, client, generateOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create watcher: %w", err)
+	}
+
+	ctx, cancel := context.WithCancel(cmd.Context())
+	defer cancel()
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		slog.Info("received shutdown signal, stopping watch mode...")
+		cancel()
+	}()
+
+	err = watcher.Run(ctx)
+	if err != nil {
+		if errors.Is(err, watch.ErrGracefulShutdown) {
+			return nil
+		}
+		return err
+	}
 	return nil
 }
