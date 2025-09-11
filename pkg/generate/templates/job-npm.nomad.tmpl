@@ -6,6 +6,7 @@ job "[[ template "job_name" . ]]" {
   group "mcp-server" {
     count = [[ .my.count ]]
 
+    {{- if and .HasTransport (ne .Transport.Type "stdio")}}
     network {
       port "mcp" {
         static = 3000
@@ -23,6 +24,7 @@ job "[[ template "job_name" . ]]" {
         timeout  = "2s"
       }
     }
+    {{- end}}
 
     task "{{.TaskName}}" {
       driver = "exec"
