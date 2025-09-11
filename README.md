@@ -33,9 +33,9 @@ A command-line utility that generates HashiCorp Nomad Pack definitions from MCP 
 - **Enhanced Test Coverage**: Multiple packages now have 100% test coverage (genutils, serversearchutils, watchutils)
 - **Robust Error Handling**: Improved error types and handling throughout the application
 
-### To-Do Refactoring:
+### 📝 To-Do Refactoring:
 
-- **Factor Registry Package into SDK**: Use the code in the `registry` package to create an MCP Registry Go SDK
+- **Refactor Registry Package into SDK**: Use the code in the `registry` package to create an MCP Registry Go SDK
 
 ### Project Structure
 
@@ -51,15 +51,15 @@ nomad-mcp-pack/
 │   └── nomadmcppack.go                   # Root command and CLI setup
 ├── demo/                                 # Demo scripts and documentation
 │   ├── demo-generate.sh                  # Interactive demo script for generate command
-│   └── README-DEMO.md                    # Demo documentation and usage
+│   └── README.md                         # Demo documentation and usage
 ├── pkg/                                  # Package `pkg` - Public packages
 │   ├── generate/                         # Package `generate` - Pack generation functionality
 │   │   ├── generate.go                   # Core pack generation logic with dual output modes
-│   │   ├── generate_test.go              # Comprehensive unit tests for generation logic
+│   │   ├── generate_test.go              # Unit tests for code in generate.go
 │   │   ├── templates.go                  # Template rendering system with embedded templates
-│   │   ├── templates_test.go             # Unit tests for template rendering
+│   │   ├── templates_test.go             # Unit tests for code in templates.go
 │   │   ├── archive.go                    # ZIP archive creation functionality
-│   │   ├── archive_test.go               # Unit tests for archive creation
+│   │   ├── archive_test.go               # Unit tests for code in archive.go
 │   │   └── templates/                    # Embedded Nomad Pack templates
 │   │       ├── metadata.hcl.tmpl         # Pack metadata template
 │   │       ├── outputs.tpl.tmpl          # Pack outputs template
@@ -68,32 +68,31 @@ nomad-mcp-pack/
 │   │       ├── job-npm.nomad.tmpl        # NPM package job template
 │   │       ├── job-pypi.nomad.tmpl       # PyPI package job template
 │   │       └── job-nuget.nomad.tmpl      # NuGet package job template
-│   ├── registry/                         # Package `registry` - MCP Registry client
-│   │   ├── registry.go                   # HTTP client for MCP Registry API v1.0.0
-│   │   └── registry_test.go              # Comprehensive unit tests for registry client
-│   └── server/                           # Package `server` - Server utilities (placeholder)
+│   └── registry/                         # Package `registry` - MCP Registry client
+│       ├── registry.go                   # HTTP client for MCP Registry API v1.0.0
+│       └── registry_test.go              # Unit tests for code in registry.go
 ├── internal/                             # Package `internal` - Private application code
 │   ├── config/                           # Package `config` - Configuration management
-│   │   └── config.go                     # Viper-based configuration with env/file/defaults
+│   │   └── config.go                     # Configuration parsing/loading logic with env/file/defaults
 │   ├── ctxutils/                         # Package `ctxutils` - Context utilities
-│   │   └── ctxutils.go                   # Request-scoped logging, tracing, etc. (to be implemented)
+│   │   └── ctxutils.go                   # Request-scoped logging & tracing helper functions
 │   ├── genutils/                         # Package `genutils` - Generate command utilities
 │   │   ├── genutils.go                   # Server specification parsing and validation
-│   │   └── genutils_test.go              # Comprehensive unit tests for server spec parsing (100% coverage)
+│   │   └── genutils_test.go              # Unit tests for code in genutils.go
 │   ├── logutils/                         # Package `logutils` - Logging utilities
 │   │   └── logutils.go                   # Logger initialization with consistent stderr output
 │   ├── serversearchutils/                # Package `serversearchutils` - Server search utilities
 │   │   ├── serversearchutils.go          # Server name validation and search specs
-│   │   └── serversearchutils_test.go     # Comprehensive unit tests (100% coverage)
+│   │   └── serversearchutils_test.go     # Unit tests for code in serversearchutils.go
 │   ├── watch/                            # Package `watch` - Watch functionality
-│   │   ├── watcher.go                    # Main watcher with polling, filtering, and concurrent generation
-│   │   ├── state.go                      # State management with atomic persistence
 │   │   ├── errors.go                     # Custom error types for graceful shutdown
-│   │   ├── watcher_test.go               # Comprehensive unit tests (88.1% coverage)
-│   │   └── state_test.go                 # State management tests with table-driven patterns
+│   │   ├── state.go                      # State management with atomic persistence
+│   │   ├── state_test.go                 # Unit tests for code in state.go
+│   │   ├── watcher.go                    # Main watcher with polling, filtering, and concurrent generation
+│   │   └── watcher_test.go               # Unit tests for code in watcher.go
 │   └── watchutils/                       # Package `watchutils` - Watch command utilities
 │       ├── watchutils.go                 # Filter parsing, validation, and watch configuration
-│       └── watchutils_test.go            # Complete unit tests (100% coverage)
+│       └── watchutils_test.go            # Unit tests for code in watchutils.go
 ├── tests/                                # Test suite
 │   └── integration/                      # Integration tests
 │       ├── registry/                     # Git submodule: MCP Registry (v1.0.0)
@@ -103,7 +102,6 @@ nomad-mcp-pack/
 │       └── README.md                     # Integration testing documentation
 ├── reference/                            # Reference documentation
 │   └── registry-api-v1.0.0.yaml          # OpenAPI v1.0.0 specification for MCP Registry
-├── CLAUDE.md                             # Agent instructions for AI coding assistants
 ├── config.yaml.example                   # Example configuration file
 ├── main.go                               # Application entry point
 ├── go.mod                                # Go module definition
@@ -189,8 +187,6 @@ nomad-mcp-pack watch --dry-run
 
 # Capture logs to file (all logs go to stderr)
 nomad-mcp-pack watch 2>watch.log
-
-# Stop gracefully with Ctrl-C (no error messages)
 ```
 
 ### 🚧 HTTP Server Mode (Planned)
@@ -226,16 +222,15 @@ Each generated pack contains:
 ### Supported Package Types
 
 - **OCI (Docker)** - Default: Uses Docker driver for containerized deployment
-- **NPM** - Uses exec driver with `npx` to run Node.js packages
-- **PyPI** - Uses exec driver with `pip` to install and run Python packages  
-- **NuGet** - Uses exec driver with `dotnet tool` for .NET packages
+- **NPM** - Uses exec driver with Node.js, downloads package via artifact, runs `npm install` then `node .`
+- **PyPI** - Uses exec driver with bash script, creates virtual environment, installs with `pip`, runs `python -m package`
+- **NuGet** - Uses exec driver with `dotnet tool install` to local path, then executes tool directly
 
 ## Current Implementation Status
 
 ### ✅ Completed Components
 
 #### Pack Generation System (`pkg/generate/`)
-- **Complete Implementation**: 588 lines of production code with 73.5% test coverage
 - **Dual Output Modes**: Generate packs as directories or ZIP archives
 - **Template-Based Generation**: Embedded Go templates for all pack components
 - **Package Type Support**: NPM, PyPI, OCI (Docker), and NuGet with specific job templates
@@ -244,10 +239,10 @@ Each generated pack contains:
 
 #### MCP Registry Client (`pkg/registry/`)
 - **Full API v1.0.0 Support**: All query parameters (cursor, limit, updated_since, search, version)  
-- **Robust HTTP Client**: Retry logic with exponential backoff, proper timeout handling (74.0% test coverage)
+- **Robust HTTP Client**: Retry logic with exponential backoff, proper timeout handling
 - **Semantic Versioning**: Client-side version comparison to find latest active servers
-- **Comprehensive Testing**: Unit tests with mock servers + integration tests against real registry
 - **Convenience Methods**: GetLatestActiveServer, SearchServers, GetUpdatedServers, etc.
+- **Comprehensive Testing**: Unit tests with mock servers + integration tests against real registry
 
 #### Generate Command (`cmd/generate/`)
 - **Full CLI Implementation**: Complete generate command with all options
@@ -262,14 +257,13 @@ Each generated pack contains:
 - **Environment Helpers**: IsDev(), IsProd(), IsNonProd() convenience methods
 
 #### Watch System (`internal/watch/`)
-- **Complete Implementation**: 300+ lines of production code with 88.1% test coverage
 - **Continuous Monitoring**: Configurable interval polling with UpdatedSince filtering for efficiency
 - **State Management**: Atomic persistence using JSON files with mutex synchronization
 - **Concurrent Generation**: Semaphore-controlled concurrent pack generation with configurable limits
 - **Server Filtering**: Support for filtering by server names and package types
 - **Graceful Shutdown**: Custom error types for clean Ctrl-C termination without error messages
-- **Comprehensive Testing**: HTTP test servers, table-driven tests, context control for infinite loops
 - **Output Type Support**: Configuration for pack directory vs archive output
+- **Comprehensive Testing**: HTTP test servers, table-driven tests, context control for infinite loops
 
 #### Integration Testing (`tests/integration/`)
 - **Local Registry**: Git submodule pinned to MCP Registry v1.0.0
@@ -288,30 +282,10 @@ Each generated pack contains:
 
 ### ⏳ Planned Components
 
-#### Watch Functionality (`internal/watch/`)
-- **State Management**: JSON-based state file to track generated packs
-- **Polling Logic**: Configurable interval polling of registry for updates
-- **Filtering**: Package type and server name filtering
-- **TUI Option**: Terminal UI for interactive watch mode
-
 #### Server Mode (`cmd/server/`)
 - **HTTP API**: REST endpoints for pack generation
 - **Registry Health Checks**: Registry connectivity and system health endpoints
 - **Server Health Checks**: Server health endpoints
-
-#### Template System (*Completed - moved to `pkg/generate/templates/`*)
-- **Nomad Pack Templates**: Go templates for generating pack structure
-- **Package Type Support**: NPM, PyPI, OCI (Docker), NuGet specific logic
-
-**Note**: Core pack generation functionality is now complete and ready for use. The generate command is fully functional for creating Nomad Packs from MCP servers.
-
-### Building Locally
-
-```bash
-make build
-```
-
-The binary will be created in the current directory as `nomad-mcp-pack`.
 
 ## Development Setup
 
@@ -409,54 +383,9 @@ Located in `demo/demo-generate.sh`, this comprehensive demo showcases all featur
 ./demo/demo-generate.sh help
 ```
 
-For detailed information about the demo, see [demo/README-DEMO.md](demo/README-DEMO.md).
-
-### Demo Features
-- **Interactive presentations** with pause points for command explanations
-- **Clean output** with suppressed logging for presentation clarity
-- **Automatic cleanup** of all generated artifacts
-- **Multiple demo servers** to showcase different package types
-- **Error handling** demonstrations
+For detailed information about the demo, see [demo/README.md](demo/README.md).
 
 Additional demos for `watch` and `server` commands will be added as those features are implemented.
-
-## Generated Pack Structure
-
-Each generated Nomad Pack includes:
-
-```
-<server-id>/
-├── metadata.hcl              # Pack metadata and description
-├── variables.hcl             # Input variables with validation
-├── outputs.tpl               # Output template
-├── templates/
-│   └── mcp-server.nomad.tpl  # Main Nomad job template
-└── README.md                 # Pack documentation
-```
-
-## Development
-
-### Prerequisites
-
-- Go 1.25.1 or later
-- Make
-- HashiCorp Nomad (for testing generated packs)
-
-### Building
-
-```bash
-# Build the binary
-make build
-
-# Build with custom version
-make build VERSION=1.0.0
-
-# Run tests
-make test
-
-# Clean and rebuild
-make rebuild
-```
 
 ## Configuration
 
