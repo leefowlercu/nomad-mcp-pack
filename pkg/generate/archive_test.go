@@ -4,9 +4,10 @@ import (
 	"archive/zip"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
 
@@ -90,8 +91,8 @@ func TestCreateArchive_Success(t *testing.T) {
 
 	// Create generator with test data
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "test.example/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "test.example", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -139,8 +140,8 @@ func TestCreateArchive_AlreadyExists(t *testing.T) {
 
 	// Create generator
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "test/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "test", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -177,8 +178,8 @@ func TestCreateArchive_ForceOverwrite(t *testing.T) {
 
 	// Create generator with force flag
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "test/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "test", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -224,8 +225,8 @@ func TestCreateArchive_EmptyDirectory(t *testing.T) {
 
 	// Create generator
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "empty/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "empty", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -282,8 +283,8 @@ func TestCreateArchive_NestedDirectories(t *testing.T) {
 
 	// Create generator
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "nested/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "nested", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -318,8 +319,8 @@ func TestCreateArchive_InvalidPath(t *testing.T) {
 
 	// Create generator with invalid output directory
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "test/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "test", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -363,8 +364,8 @@ func TestCreateArchive_FilePermissions(t *testing.T) {
 
 	// Create generator
 	generator := &Generator{
-		serverSpec: &genutils.ServerSpec{
-			ServerName: "perm/server",
+		serverSpec: &serversearchutils.ServerSearchSpec{
+			Namespace: "perm", Name: "server",
 			Version:    "1.0.0",
 		},
 		pkg: &model.Package{
@@ -401,10 +402,10 @@ func TestCreateArchive_PackNameSanitization(t *testing.T) {
 	}{
 		{
 			name:           "simple name",
-			serverName:     "simple-server",
+			serverName:     "example.com/simple-server",
 			version:        "1.0.0",
 			packageType:    "npm",
-			expectedPrefix: "simple-server-1.0.0-npm",
+			expectedPrefix: "example-com-simple-server-1.0.0-npm",
 		},
 		{
 			name:           "name with slashes",
@@ -415,10 +416,10 @@ func TestCreateArchive_PackNameSanitization(t *testing.T) {
 		},
 		{
 			name:           "name with dots and special chars",
-			serverName:     "io.github.user/complex@server",
+			serverName:     "io.github.user/complex-server",
 			version:        "0.1.0-beta",
 			packageType:    "pypi",
-			expectedPrefix: "io-github-user-complexserver-0.1.0-beta-pypi",
+			expectedPrefix: "io-github-user-complex-server-0.1.0-beta-pypi",
 		},
 	}
 
@@ -429,11 +430,16 @@ func TestCreateArchive_PackNameSanitization(t *testing.T) {
 
 			packDir := createTestPackDir(t, tempDir)
 
+			// Parse namespace/name format
+			parts := strings.Split(tt.serverName, "/")
+			serverSpec := &serversearchutils.ServerSearchSpec{
+				Namespace: parts[0],
+				Name:      parts[1],
+				Version:   tt.version,
+			}
+
 			generator := &Generator{
-				serverSpec: &genutils.ServerSpec{
-					ServerName: tt.serverName,
-					Version:    tt.version,
-				},
+				serverSpec: serverSpec,
 				pkg: &model.Package{
 					RegistryType: tt.packageType,
 				},

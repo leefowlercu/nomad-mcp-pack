@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
@@ -21,14 +21,14 @@ type Options struct {
 
 type Generator struct {
 	server     *v0.ServerJSON
-	serverSpec *genutils.ServerSpec
+	serverSpec *serversearchutils.ServerSearchSpec
 	pkg        *model.Package
 	outputDir  string
 	packDir    string
 	options    Options
 }
 
-func Run(ctx context.Context, server *v0.ServerJSON, serverSpec *genutils.ServerSpec, packageType string, opts Options) error {
+func Run(ctx context.Context, server *v0.ServerJSON, serverSpec *serversearchutils.ServerSearchSpec, packageType string, opts Options) error {
 	if server == nil {
 		return fmt.Errorf("server cannot be nil")
 	}
@@ -48,7 +48,7 @@ func Run(ctx context.Context, server *v0.ServerJSON, serverSpec *genutils.Server
 	}
 
 	// Create pack directory name: <server-name>-<version>-<package-type>
-	packDirName := sanitizePackName(serverSpec.ServerName) + "-" + serverSpec.Version + "-" + packageType
+	packDirName := sanitizePackName(serverSpec.FullName()) + "-" + serverSpec.Version + "-" + packageType
 	packDir := filepath.Join(opts.OutputDir, packDirName)
 
 	generator := &Generator{
@@ -100,7 +100,7 @@ func (g *Generator) generateArchive(ctx context.Context) error {
 	defer os.RemoveAll(tempDir)
 
 	originalPackDir := g.packDir
-	packName := sanitizePackName(g.serverSpec.ServerName) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
+	packName := sanitizePackName(g.serverSpec.FullName()) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
 	g.packDir = filepath.Join(tempDir, packName)
 
 	if err := os.MkdirAll(g.packDir, 0755); err != nil {
@@ -147,7 +147,7 @@ func (g *Generator) generateFiles() error {
 
 func (g *Generator) dryRunGenerate(ctx context.Context) error {
 	if g.options.OutputType == "archive" {
-		packName := sanitizePackName(g.serverSpec.ServerName) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
+		packName := sanitizePackName(g.serverSpec.FullName()) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
 		archivePath := filepath.Join(g.options.OutputDir, packName+".zip")
 		fmt.Printf("Would create pack archive: %s\n", archivePath)
 	} else {

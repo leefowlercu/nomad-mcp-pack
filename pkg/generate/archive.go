@@ -10,7 +10,7 @@ import (
 )
 
 func (g *Generator) createArchive(tempPackDir string) error {
-	packName := sanitizePackName(g.serverSpec.ServerName) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
+	packName := sanitizePackName(g.serverSpec.FullName()) + "-" + g.serverSpec.Version + "-" + g.pkg.RegistryType
 	archivePath := filepath.Join(g.options.OutputDir, packName+".zip")
 
 	if _, err := os.Stat(archivePath); err == nil && !g.options.Force {

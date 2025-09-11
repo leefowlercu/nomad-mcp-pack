@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
@@ -70,9 +70,10 @@ func mockServerJSON() *v0.ServerJSON {
 	}
 }
 
-func mockServerSpec() *genutils.ServerSpec {
-	return &genutils.ServerSpec{
-		ServerName: "test.server/name",
+func mockServerSpec() *serversearchutils.ServerSearchSpec {
+	return &serversearchutils.ServerSearchSpec{
+		Namespace: "test.server",
+		Name:      "name",
 		Version:    "1.0.0",
 	}
 }
@@ -420,8 +421,9 @@ func TestRun_DifferentPackageTypes(t *testing.T) {
 func TestRun_MinimalServer(t *testing.T) {
 	ctx := context.Background()
 	server := mockMinimalServerJSON()
-	serverSpec := &genutils.ServerSpec{
-		ServerName: "minimal/server",
+	serverSpec := &serversearchutils.ServerSearchSpec{
+		Namespace: "minimal",
+		Name:      "server",
 		Version:    "0.1.0",
 	}
 	

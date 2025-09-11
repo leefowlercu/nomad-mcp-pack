@@ -215,7 +215,7 @@ func TestRenderReadmeTemplate(t *testing.T) {
 
 	// Verify README contains key information
 	expectedContent := []string{
-		serverSpec.ServerName, // server name in title
+		serverSpec.FullName(), // server name in title
 		server.Description, // server description
 		pkg.Identifier, // package identifier
 		serverSpec.Version, // version
@@ -257,14 +257,14 @@ func TestMetadataData_Population(t *testing.T) {
 	pkg := &server.Packages[0]
 
 	// This tests the data structure used in template rendering
-	packName := sanitizePackName(serverSpec.ServerName) + "-" + pkg.RegistryType
+	packName := sanitizePackName(serverSpec.FullName()) + "-" + pkg.RegistryType
 	
 	data := MetadataData{
 		PackName:        packName,
 		PackDescription: server.Description,
 		PackVersion:     serverSpec.Version,
 		AppURL:          server.Repository.URL,
-		ServerName:      serverSpec.ServerName,
+		ServerName:      serverSpec.FullName(),
 	}
 
 	// Verify data is properly populated

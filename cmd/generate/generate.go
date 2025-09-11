@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
-	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
 	"github.com/leefowlercu/nomad-mcp-pack/pkg/generate"
 	"github.com/leefowlercu/nomad-mcp-pack/pkg/registry"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
@@ -68,7 +68,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	serverSpecArg := args[0]
 	slog.Debug("parsing generate command argument", "argument", serverSpecArg)
 
-	serverSpec, err := genutils.ParseServerSpec(serverSpecArg)
+	serverSpec, err := serversearchutils.ParseServerSearchSpec(serverSpecArg)
 	if err != nil {
 		return fmt.Errorf("invalid server specification: %w", err)
 	}
@@ -78,7 +78,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	registryURL := viper.GetString("mcp_registry_url")
 
 	slog.Info("generating nomad pack",
-		"server", serverSpec.ServerName,
+		"server", serverSpec.FullName(),
 		"version", serverSpec.Version,
 		"output_dir", outputDir,
 		"output_type", outputType,
@@ -98,20 +98,20 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	var server *v0.ServerJSON
 
 	if serverSpec.IsLatest() {
-		slog.Debug("resolving latest version", "server", serverSpec.ServerName)
+		slog.Debug("resolving latest version", "server", serverSpec.FullName())
 
-		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.ServerName, "latest")
+		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.FullName(), "latest")
 		if err != nil {
 			return fmt.Errorf("failed to get latest server version: %w", err)
 		}
 		server = serverResp
 
 		serverSpec.Version = server.Version
-		slog.Info("resolved latest version", "server", serverSpec.ServerName, "version", server.Version)
+		slog.Info("resolved latest version", "server", serverSpec.FullName(), "version", server.Version)
 	} else {
-		slog.Debug("fetching specific version", "server", serverSpec.ServerName, "version", serverSpec.Version)
+		slog.Debug("fetching specific version", "server", serverSpec.FullName(), "version", serverSpec.Version)
 
-		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.ServerName, serverSpec.Version)
+		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.FullName(), serverSpec.Version)
 		if err != nil {
 			return fmt.Errorf("failed to get server version %s: %w", serverSpec.Version, err)
 		}
@@ -119,13 +119,13 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 	}
 
 	if server.Status == model.StatusDeleted {
-		return fmt.Errorf("server %s@%s is deleted and cannot be used", serverSpec.ServerName, server.Version)
+		return fmt.Errorf("server %s@%s is deleted and cannot be used", serverSpec.FullName(), server.Version)
 	}
 	if server.Status == model.StatusDeprecated && !allowDeprecated {
-		return fmt.Errorf("server %s@%s is deprecated (use --allow-deprecated to generate anyway)", serverSpec.ServerName, server.Version)
+		return fmt.Errorf("server %s@%s is deprecated (use --allow-deprecated to generate anyway)", serverSpec.FullName(), server.Version)
 	}
 	if server.Status == model.StatusDeprecated && allowDeprecated {
-		slog.Warn("generating pack for deprecated server", "server", serverSpec.ServerName, "version", server.Version)
+		slog.Warn("generating pack for deprecated server", "server", serverSpec.FullName(), "version", server.Version)
 	}
 
 	hasMatchingPackage := false
@@ -143,11 +143,11 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		}
 
 		if len(availableTypes) == 0 {
-			return fmt.Errorf("server %s@%s has no packages defined", serverSpec.ServerName, server.Version)
+			return fmt.Errorf("server %s@%s has no packages defined", serverSpec.FullName(), server.Version)
 		}
 
 		return fmt.Errorf("server %s@%s does not have a package of type %q (available: %s)",
-			serverSpec.ServerName, server.Version, packageType, strings.Join(availableTypes, ", "))
+			serverSpec.FullName(), server.Version, packageType, strings.Join(availableTypes, ", "))
 	}
 
 	// Generate the Nomad Pack
@@ -167,7 +167,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		slog.Info("dry run completed successfully")
 	} else {
 		packName := fmt.Sprintf("%s-%s-%s",
-			strings.ReplaceAll(serverSpec.ServerName, "/", "-"),
+			strings.ReplaceAll(serverSpec.FullName(), "/", "-"),
 			serverSpec.Version,
 			packageType)
 		slog.Info("pack generated successfully",

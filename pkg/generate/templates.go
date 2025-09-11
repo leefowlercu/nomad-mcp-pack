@@ -8,7 +8,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/leefowlercu/nomad-mcp-pack/internal/genutils"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
@@ -112,8 +112,8 @@ type ReadmeData struct {
 	HasRepository   bool
 }
 
-func renderMetadataTemplate(server *v0.ServerJSON, serverSpec *genutils.ServerSpec, pkg *model.Package) (string, error) {
-	packName := sanitizePackName(serverSpec.ServerName) + "-" + pkg.RegistryType
+func renderMetadataTemplate(server *v0.ServerJSON, serverSpec *serversearchutils.ServerSearchSpec, pkg *model.Package) (string, error) {
+	packName := sanitizePackName(serverSpec.FullName()) + "-" + pkg.RegistryType
 	
 	appURL := ""
 	if server.Repository.URL != "" {
@@ -125,7 +125,7 @@ func renderMetadataTemplate(server *v0.ServerJSON, serverSpec *genutils.ServerSp
 		PackDescription: server.Description,
 		PackVersion:     serverSpec.Version,
 		AppURL:          appURL,
-		ServerName:      serverSpec.ServerName,
+		ServerName:      serverSpec.FullName(),
 	}
 
 	var buf bytes.Buffer
@@ -213,9 +213,9 @@ func renderOutputsTemplate(server *v0.ServerJSON) (string, error) {
 	return buf.String(), nil
 }
 
-func renderReadmeTemplate(server *v0.ServerJSON, serverSpec *genutils.ServerSpec, pkg *model.Package) (string, error) {
+func renderReadmeTemplate(server *v0.ServerJSON, serverSpec *serversearchutils.ServerSearchSpec, pkg *model.Package) (string, error) {
 	data := ReadmeData{
-		ServerName:    serverSpec.ServerName,
+		ServerName:    serverSpec.FullName(),
 		Description:   server.Description,
 		PackageType:   pkg.RegistryType,
 		PackageID:     pkg.Identifier,
