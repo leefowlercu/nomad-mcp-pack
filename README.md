@@ -278,7 +278,9 @@ Each generated pack contains:
 
 ### 🚧 In Progress Components
 
-*No components currently in progress - all core functionality is complete.*
+#### Watch Frontend
+- Add `stdout` log stream of events during operation of watch mode in normal execution mode
+- Add Terminal UI to watch mode when `--enable-tui` is set
 
 ### ⏳ Planned Components
 
