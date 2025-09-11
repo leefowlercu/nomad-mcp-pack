@@ -24,9 +24,9 @@ output_type: packdir
 # Log level: debug, info, warn, error
 log_level: info
 
-# Environment: dev, nonprod, prod
+# Environment: dev, prod
 # - dev: text logging with source location
-# - nonprod/prod: JSON logging
+# - prod: json logging
 env: prod
 
 # Server-specific configuration

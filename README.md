@@ -254,7 +254,7 @@ Each generated pack contains:
 - **Hierarchical Configuration**: Command flags > Environment variables > Config files > Defaults
 - **Viper Integration**: YAML config files with automatic environment variable binding
 - **Validation**: Early validation with clear error messages for invalid values
-- **Environment Helpers**: IsDev(), IsProd(), IsNonProd() convenience methods
+- **Environment Helpers**: IsDev(), IsProd() convenience methods
 
 #### Watch System (`internal/watch/`)
 - **Continuous Monitoring**: Configurable interval polling with UpdatedSince filtering for efficiency
@@ -413,7 +413,7 @@ All configuration options can be set via environment variables with the prefix `
 - `NOMAD_MCP_PACK_OUTPUT_DIR`: Default output directory for generated packs (defaults to ./packs)
 - `NOMAD_MCP_PACK_OUTPUT_TYPE`: Output type for generated packs (packdir or archive) - defaults to packdir
 - `NOMAD_MCP_PACK_LOG_LEVEL`: Set logging level (debug, info, warn, error) - defaults to info
-- `NOMAD_MCP_PACK_ENV`: Environment mode (dev, nonprod, prod) - affects log output format, defaults to prod
+- `NOMAD_MCP_PACK_ENV`: Environment mode (dev, prod) - affects log output format, defaults to prod
 
 #### Server Configuration
 - `NOMAD_MCP_PACK_SERVER_ADDR`: Server address to bind to (defaults to :8080)

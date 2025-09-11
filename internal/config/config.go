@@ -19,9 +19,8 @@ const (
 type Env string
 
 const (
-	EnvDev     Env = "dev"
-	EnvNonProd Env = "nonprod"
-	EnvProd    Env = "prod"
+	EnvDev  Env = "dev"
+	EnvProd Env = "prod"
 )
 
 type OutputType string
@@ -130,9 +129,9 @@ func GetConfig() (*Config, error) {
 	}
 
 	switch cfg.Env {
-	case EnvDev, EnvNonProd, EnvProd:
+	case EnvDev, EnvProd:
 	default:
-		return nil, fmt.Errorf("invalid env: %s (must be dev, nonprod, or prod)", cfg.Env)
+		return nil, fmt.Errorf("invalid env: %s (must be dev or prod)", cfg.Env)
 	}
 
 	switch cfg.OutputType {
@@ -146,10 +145,6 @@ func GetConfig() (*Config, error) {
 
 func (c *Config) IsDev() bool {
 	return c.Env == EnvDev
-}
-
-func (c *Config) IsNonProd() bool {
-	return c.Env == EnvNonProd
 }
 
 func (c *Config) IsProd() bool {

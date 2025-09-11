@@ -34,8 +34,6 @@ func SetupLogger(cfg *config.Config) *slog.Logger {
 	case config.EnvDev:
 		opts.AddSource = true
 		handler = slog.NewTextHandler(os.Stderr, opts)
-	case config.EnvNonProd:
-		handler = slog.NewJSONHandler(os.Stderr, opts)
 	case config.EnvProd:
 		handler = slog.NewJSONHandler(os.Stderr, opts)
 	default:
