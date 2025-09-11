@@ -64,7 +64,7 @@ exec ${NOMAD_TASK_DIR}/local/tools/{{.PackageID | base}} \
 {{- if eq .Type "positional"}}
   "[[ .my.{{.Name | lower}} ]]" \
 {{- else}}
-  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
 {{- end}}
 {{- end}}
 {{- end}}
@@ -73,7 +73,7 @@ exec ${NOMAD_TASK_DIR}/local/tools/{{.PackageID | base}} \
 {{- if eq .Type "positional"}}
   "[[ .my.{{.Name | lower}} ]]" \
 {{- else}}
-  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
 {{- end}}
 {{- end}}
 {{- end}}

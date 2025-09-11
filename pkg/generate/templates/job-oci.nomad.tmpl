@@ -45,7 +45,7 @@ job "[[ template "job_name" . ]]" {
           {{- if eq .Type "positional"}}
           "[[ .my.{{.Name | lower}} ]]",
           {{- else}}
-          "--{{.Name}}",
+          "{{.Name}}",
           "[[ .my.{{.Name | lower}} ]]",
           {{- end}}
           {{- end}}
@@ -55,7 +55,7 @@ job "[[ template "job_name" . ]]" {
           {{- if eq .Type "positional"}}
           "[[ .my.{{.Name | lower}} ]]",
           {{- else}}
-          "--{{.Name}}",
+          "{{.Name}}",
           "[[ .my.{{.Name | lower}} ]]",
           {{- end}}
           {{- end}}

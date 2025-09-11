@@ -66,7 +66,7 @@ exec python -m {{.PackageID}} \
 {{- if eq .Type "positional"}}
   "[[ .my.{{.Name | lower}} ]]" \
 {{- else}}
-  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
 {{- end}}
 {{- end}}
 {{- end}}
@@ -75,7 +75,7 @@ exec python -m {{.PackageID}} \
 {{- if eq .Type "positional"}}
   "[[ .my.{{.Name | lower}} ]]" \
 {{- else}}
-  --{{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
 {{- end}}
 {{- end}}
 {{- end}}
