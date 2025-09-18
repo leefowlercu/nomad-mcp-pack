@@ -128,9 +128,9 @@ main() {
     echo "'deprecated' or 'deleted' then a Nomad Pack will be generated."
     echo ""
     
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@${DEMO_VERSION_LATEST} --package-type npm --output-dir $DEMO_OUTPUT_DIR"
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@${DEMO_VERSION_LATEST} --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR"
     wait_for_user
-    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@${DEMO_VERSION_LATEST}" --package-type npm --output-dir $DEMO_OUTPUT_DIR
+    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@${DEMO_VERSION_LATEST}" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR
     
     print_success "Pack generated successfully!\n"
     print_info "Let's examine what was created:"
@@ -157,10 +157,10 @@ main() {
     print_header "Demo 2: Generate Pack from specific Version"
     echo "Now let's generate a pack for a specific version to show version handling."
     echo ""
-    
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@${DEMO_SERVER_NPM_VERSION} --package-type npm --output-dir $DEMO_OUTPUT_DIR"
+
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@${DEMO_SERVER_NPM_VERSION} --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR"
     wait_for_user
-    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@${DEMO_SERVER_NPM_VERSION}" --package-type npm --output-dir $DEMO_OUTPUT_DIR
+    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@${DEMO_SERVER_NPM_VERSION}" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR
     
     print_success "Specific version pack generated!"
     
@@ -171,11 +171,11 @@ main() {
     echo "The --dry-run flag shows what would be generated without creating files."
     echo "This is useful for previewing or validation."
     echo ""
-    
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR --dry-run"
+
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --dry-run"
     wait_for_user
-    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR --dry-run
-    
+    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --dry-run
+
     print_success "Dry run completed - no files were created"
     
     wait_for_user
@@ -184,11 +184,11 @@ main() {
     print_header "Demo 4: Generate Pack Archive"
     echo "Generate a pack as a ZIP archive instead of a directory."
     echo ""
-    
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR --output-type archive"
+
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --output-type archive"
     wait_for_user
-    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR --output-type archive
-    
+    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --output-type archive
+
     print_success "Archive generated!\n"
     print_info "Let's see the archive that was created:"
     print_command "ls -la ${DEMO_OUTPUT_DIR}/*.zip"
@@ -201,11 +201,11 @@ main() {
     echo "Generate packs for different package types using a server that hosted on Dockerhub (OCI)."
     echo "We'll use ${DEMO_SERVER_OCI} which has both npm and oci packages."
     echo ""
-    
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_OCI}@latest --package-type oci --output-dir $DEMO_OUTPUT_DIR"
+
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_OCI}@latest --package-type oci --transport-type stdio --output-dir $DEMO_OUTPUT_DIR"
     wait_for_user
-    nomad-mcp-pack generate "${DEMO_SERVER_OCI}@latest" --package-type oci --output-dir $DEMO_OUTPUT_DIR
-    
+    nomad-mcp-pack generate "${DEMO_SERVER_OCI}@latest" --package-type oci --transport-type stdio --output-dir $DEMO_OUTPUT_DIR
+
     print_success "OCI/Docker version generated!"
     
     print_info "Let's compare the job templates between npm and oci versions:"
@@ -227,10 +227,10 @@ main() {
     echo ""
     
     print_info "First, let's try to generate to the same location (should fail):"
-    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR"
+    print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR"
     wait_for_user
     set +e  # Don't exit on error for this demo
-    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR
+    nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR
     RESULT=$?
     set -e
     
@@ -238,9 +238,9 @@ main() {
         print_success "Command failed as expected (pack already exists)\n"
         
         print_info "Now let's use --force-overwrite to overwrite:"
-        print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR --force-overwrite"
+        print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --force-overwrite"
         wait_for_user
-        nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR --force-overwrite
+        nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --transport-type stdio --output-dir $DEMO_OUTPUT_DIR --force-overwrite
         print_success "Pack overwritten successfully with --force-overwrite!"
     fi
     
