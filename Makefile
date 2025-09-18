@@ -8,7 +8,7 @@ all: build
 build:
 	@echo "Building $(BINARY_NAME) version $(VERSION)..."
 	@go build -ldflags="-X '$(CMD_PATH)/cmd.version=$(VERSION)'" -o $(BINARY_NAME) $(CMD_PATH)
-	@echo "$(BINARY_NAME) built successfully."
+	@echo "Artifact: $(BINARY_NAME) built successfully."
 
 test: 
 	@echo "Running all tests..."
@@ -57,7 +57,8 @@ registry-update:
 
 clean:
 	@echo "Cleaning..."
-	@rm -f $(BINARY_NAME)
+	@rm -f $(BINARY_NAME) watch.json watch.log
+	@rm -rf ./test-packs/
 	@echo "Cleaned."
 
 rebuild: clean build

@@ -3,23 +3,17 @@ package cmdgenerate
 import (
 	"fmt"
 	"log/slog"
-	"strings"
+	"net/url"
 
+	"github.com/leefowlercu/go-mcp-registry/mcp"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
-	"github.com/leefowlercu/nomad-mcp-pack/internal/serversearchutils"
-	"github.com/leefowlercu/nomad-mcp-pack/pkg/generate"
-	"github.com/leefowlercu/nomad-mcp-pack/pkg/registry"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/generator"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/server"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/validate"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-)
-
-var (
-	dryRun          bool
-	force           bool
-	packageType     string
-	allowDeprecated bool
 )
 
 var GenerateCmd = &cobra.Command{
@@ -47,133 +41,165 @@ var GenerateCmd = &cobra.Command{
   nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
   
   # Force overwrite existing pack
-  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force
+  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force-overwrite
   
   # Specify package type (default 'oci' (Docker))
-  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm`,
-	Args: cobra.ExactArgs(1),
-	RunE: runGenerate,
+  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type npm
+  
+  # Specify transport type (default 'http')
+  nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --transport-type sse`,
+	Args:    cobra.ExactArgs(1),
+	PreRunE: runValidate,
+	RunE:    runGenerate,
 }
 
 func init() {
-	GenerateCmd.Flags().StringVar(&packageType, "package-type", "oci", "Preferred package type {npm|pypi|oci|nuget}")
-	GenerateCmd.Flags().String("output-dir", config.DefaultConfig.OutputDir, "Output directory for the generated pack (itself, a directory)")
-	GenerateCmd.Flags().String("output-type", config.DefaultConfig.OutputType, "Output type {packdir|archive}")
-	GenerateCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be generated without writing files")
-	GenerateCmd.Flags().BoolVarP(&force, "force", "f", false, "Overwrite existing pack if it exists")
-	GenerateCmd.Flags().BoolVar(&allowDeprecated, "allow-deprecated", false, "Allow generation of packs for deprecated servers")
+	GenerateCmd.Flags().String("package-type", config.DefaultConfig.GeneratePackageType, "Package type {npm|pypi|oci|nuget}")
+	GenerateCmd.Flags().String("transport-type", config.DefaultConfig.GenerateTransportType, "Transport type {stdio|http|sse}")
+
+	viper.BindPFlag("generate.package_type", GenerateCmd.Flags().Lookup("package-type"))
+	viper.BindPFlag("generate.transport_type", GenerateCmd.Flags().Lookup("transport-type"))
+
+	GenerateCmd.Flags().SortFlags = false
+}
+
+func runValidate(cmd *cobra.Command, args []string) error {
+	slog.Info("starting generate command input validation")
+
+	serverSearchSpecArg := args[0]
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration; %w", err)
+	}
+
+	slog.Debug("validating generate command inputs with configuration",
+		slog.Group("common_config",
+			"registry_url", cfg.RegistryURL,
+			"log_level", cfg.LogLevel,
+			"env", cfg.Env,
+			"output_dir", cfg.OutputDir,
+			"output_type", cfg.OutputType,
+			"allow_deprecated", cfg.AllowDeprecated,
+			"dry_run", cfg.DryRun,
+			"force_overwrite", cfg.ForceOverwrite,
+		),
+		slog.Group("generate_config",
+			"package_type", cfg.Generate.PackageType,
+			"transport_type", cfg.Generate.TransportType,
+		),
+	)
+
+	packageType := cfg.Generate.PackageType
+	transportType := cfg.Generate.TransportType
+
+	if _, err = server.ParseSearchSpec(serverSearchSpecArg); err != nil {
+		return fmt.Errorf("could not parse server argument; %w", err)
+	}
+
+	if err := validate.PackageType(packageType); err != nil {
+		return fmt.Errorf("could not validate package type; %w", err)
+	}
+
+	if err := validate.TransportType(transportType); err != nil {
+		return fmt.Errorf("could not validate transport type; %w", err)
+	}
+
+	slog.Info("generate command input validation completed successfully")
+
+	// Any errors after this point are runtime errors, not usage-related errors
+	cmd.SilenceUsage = true
+
+	return nil
 }
 
 func runGenerate(cmd *cobra.Command, args []string) error {
-	serverSpecArg := args[0]
-	slog.Debug("parsing generate command argument", "argument", serverSpecArg)
-
-	serverSpec, err := serversearchutils.ParseServerSearchSpec(serverSpecArg)
-	if err != nil {
-		return fmt.Errorf("invalid server specification: %w", err)
-	}
-
-	outputDir := viper.GetString("output_dir")
-	outputType := viper.GetString("output_type")
-	registryURL := viper.GetString("mcp_registry_url")
-
-	slog.Info("generating nomad pack",
-		"server", serverSpec.FullName(),
-		"version", serverSpec.Version,
-		"output_dir", outputDir,
-		"output_type", outputType,
-		"registry_url", registryURL,
-		"dry_run", dryRun,
-		"force", force,
-		"package_type", packageType,
-		"allow_deprecated", allowDeprecated,
-	)
-
-	client, err := registry.NewClient(registryURL)
-	if err != nil {
-		return fmt.Errorf("failed to create registry client: %w", err)
-	}
+	slog.Info("starting generate command run")
 
 	ctx := cmd.Context()
-	var server *v0.ServerJSON
+	serverSearchSpecArg := args[0]
 
-	if serverSpec.IsLatest() {
-		slog.Debug("resolving latest version", "server", serverSpec.FullName())
-
-		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.FullName(), "latest")
-		if err != nil {
-			return fmt.Errorf("failed to get latest server version: %w", err)
-		}
-		server = serverResp
-
-		serverSpec.Version = server.Version
-		slog.Info("resolved latest version", "server", serverSpec.FullName(), "version", server.Version)
-	} else {
-		slog.Debug("fetching specific version", "server", serverSpec.FullName(), "version", serverSpec.Version)
-
-		serverResp, err := client.GetServerByNameAndVersion(ctx, serverSpec.FullName(), serverSpec.Version)
-		if err != nil {
-			return fmt.Errorf("failed to get server version %s: %w", serverSpec.Version, err)
-		}
-		server = serverResp
-	}
-
-	if server.Status == model.StatusDeleted {
-		return fmt.Errorf("server %s@%s is deleted and cannot be used", serverSpec.FullName(), server.Version)
-	}
-	if server.Status == model.StatusDeprecated && !allowDeprecated {
-		return fmt.Errorf("server %s@%s is deprecated (use --allow-deprecated to generate anyway)", serverSpec.FullName(), server.Version)
-	}
-	if server.Status == model.StatusDeprecated && allowDeprecated {
-		slog.Warn("generating pack for deprecated server", "server", serverSpec.FullName(), "version", server.Version)
-	}
-
-	hasMatchingPackage := false
-	for _, pkg := range server.Packages {
-		if pkg.RegistryType == packageType {
-			hasMatchingPackage = true
-			break
-		}
-	}
-
-	if !hasMatchingPackage {
-		availableTypes := make([]string, 0, len(server.Packages))
-		for _, pkg := range server.Packages {
-			availableTypes = append(availableTypes, pkg.RegistryType)
-		}
-
-		if len(availableTypes) == 0 {
-			return fmt.Errorf("server %s@%s has no packages defined", serverSpec.FullName(), server.Version)
-		}
-
-		return fmt.Errorf("server %s@%s does not have a package of type %q (available: %s)",
-			serverSpec.FullName(), server.Version, packageType, strings.Join(availableTypes, ", "))
-	}
-
-	// Generate the Nomad Pack
-	opts := generate.Options{
-		OutputDir:  outputDir,
-		OutputType: outputType,
-		DryRun:     dryRun,
-		Force:      force,
-	}
-
-	err = generate.Run(cmd.Context(), server, serverSpec, packageType, opts)
+	cfg, err := config.GetConfig()
 	if err != nil {
-		return fmt.Errorf("failed to generate pack: %w", err)
+		return fmt.Errorf("failed to load configuration; %w", err)
 	}
 
-	if dryRun {
-		slog.Info("dry run completed successfully")
-	} else {
-		packName := fmt.Sprintf("%s-%s-%s",
-			strings.ReplaceAll(serverSpec.FullName(), "/", "-"),
-			serverSpec.Version,
-			packageType)
-		slog.Info("pack generated successfully",
-			"pack_name", packName,
-			"output_dir", outputDir)
+	slog.Debug("running generate command with configuration",
+		slog.Group("common_config",
+			"registry_url", cfg.RegistryURL,
+			"log_level", cfg.LogLevel,
+			"env", cfg.Env,
+			"output_dir", cfg.OutputDir,
+			"output_type", cfg.OutputType,
+			"allow_deprecated", cfg.AllowDeprecated,
+			"dry_run", cfg.DryRun,
+			"force_overwrite", cfg.ForceOverwrite,
+		),
+		slog.Group("generate_config",
+			"package_type", cfg.Generate.PackageType,
+			"transport_type", cfg.Generate.TransportType,
+		),
+	)
+
+	packageType := cfg.Generate.PackageType
+	transportType := cfg.Generate.TransportType
+
+	registryURL := cfg.RegistryURL
+	outputDir := cfg.OutputDir
+	outputType := cfg.OutputType
+	allowDeprecated := cfg.AllowDeprecated
+	dryRun := cfg.DryRun
+	forceOverwrite := cfg.ForceOverwrite
+
+	client := mcp.NewClient(nil)
+	registryURLParsed, err := url.Parse(registryURL)
+	if err != nil {
+		return fmt.Errorf("could not parse registry URL; %w", err)
 	}
+	client.BaseURL = registryURLParsed
+
+	serverSearchSpec, err := server.ParseSearchSpec(serverSearchSpecArg)
+	if err != nil {
+		return fmt.Errorf("could not parse server argument; %w", err)
+	}
+
+	serverSpec, err := server.Find(ctx, serverSearchSpec, client)
+	if err != nil {
+		return fmt.Errorf("could not retrieve server %q from registry; %w", serverSearchSpec, err)
+	}
+
+	if serverSpec.IsDeleted() {
+		return fmt.Errorf("server %q, version %s is deleted and cannot be used", serverSpec.Name(), serverSpec.Version())
+	}
+	if serverSpec.IsDeprecated() && !allowDeprecated {
+		return fmt.Errorf("server %q, version %s is deprecated (use --allow-deprecated to generate anyway)", serverSpec.Name(), serverSpec.Version())
+	}
+	if serverSpec.IsDeprecated() && allowDeprecated {
+		slog.Warn("generating pack for deprecated server", "server", serverSpec.Name(), "version", serverSpec.Version())
+	}
+
+	var srv *v0.ServerJSON
+	var pkg *model.Package
+
+	srv = serverSpec.JSON
+	pkg, err = server.FindPackageWithTransport(srv, packageType, transportType)
+	if err != nil {
+		return fmt.Errorf("unable to generate pack for server %q, version %s: %w", serverSpec.Name(), serverSpec.Version(), err)
+	}
+
+	opts := generator.Options{
+		OutputDir:      outputDir,
+		OutputType:     string(outputType),
+		DryRun:         dryRun,
+		ForceOverwrite: forceOverwrite,
+	}
+
+	err = generator.Run(ctx, srv, pkg, opts)
+	if err != nil {
+		return fmt.Errorf("failed to generate pack; %w", err)
+	}
+
+	slog.Info("generate command run completed successfully")
 
 	return nil
 }

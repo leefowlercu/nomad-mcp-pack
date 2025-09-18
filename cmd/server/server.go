@@ -28,26 +28,16 @@ func init() {
 	ServerCmd.Flags().String("addr", config.DefaultConfig.ServerAddr, "Server address")
 	ServerCmd.Flags().Int("read-timeout", config.DefaultConfig.ServerReadTimeout, "Read timeout in seconds")
 	ServerCmd.Flags().Int("write-timeout", config.DefaultConfig.ServerWriteTimeout, "Write timeout in seconds")
+
+	viper.BindPFlag("server.addr", ServerCmd.Flags().Lookup("addr"))
+	viper.BindPFlag("server.read_timeout", ServerCmd.Flags().Lookup("read-timeout"))
+	viper.BindPFlag("server.write_timeout", ServerCmd.Flags().Lookup("write-timeout"))
 }
 
 func runServer(cmd *cobra.Command, args []string) error {
-	cfg, err := config.GetConfig()
-	if err != nil {
-		return err
-	}
+	slog.Info("starting server command run")
 
-	slog.Info("starting server",
-		"addr", cfg.Server.Addr,
-		"read_timeout", cfg.Server.ReadTimeout,
-		"write_timeout", cfg.Server.WriteTimeout,
-		"output_dir", cfg.OutputDir,
-		"mcp_registry_url", cfg.MCPRegistryURL,
-	)
-
-	slog.Debug("configuration sources",
-		"config_file", viper.ConfigFileUsed(),
-		"env", cfg.Env,
-	)
+	slog.Info("server command run completed successfully")
 
 	return nil
 }

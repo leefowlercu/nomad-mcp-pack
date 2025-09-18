@@ -9,46 +9,134 @@
 # 2. Environment variables (NOMAD_MCP_PACK_*)
 # 3. Configuration file (this file)
 # 4. Default values
+#
+# Environment variables use underscores and NOMAD_MCP_PACK_ prefix:
+# - registry_url -> NOMAD_MCP_PACK_REGISTRY_URL
+# - watch.poll_interval -> NOMAD_MCP_PACK_WATCH_POLL_INTERVAL
 
-# MCP Registry URL
-mcp_registry_url: https://registry.modelcontextprotocol.io
+# =============================================================================
+# GLOBAL CONFIGURATION
+# =============================================================================
 
-# Default output directory for generated packs
+# MCP Registry URL (default: https://registry.modelcontextprotocol.io/)
+registry_url: https://registry.modelcontextprotocol.io/
+
+# Default output directory for generated packs (default: ./packs)
 output_dir: ./packs
 
-# Output type: packdir, archive
-# - packdir: Generate packs as directories (default)
+# Output type (default: packdir)
+# - packdir: Generate packs as directories
 # - archive: Generate packs as ZIP archives
 output_type: packdir
 
-# Log level: debug, info, warn, error
+# Log level (default: info)
+# Valid values: debug, info, warn, error
 log_level: info
 
-# Environment: dev, prod
-# - dev: text logging with source location
-# - prod: json logging
+# Environment mode (default: prod)
+# - dev: Human-readable text logging with source location
+# - prod: Machine-readable JSON logging
 env: prod
 
-# Server-specific configuration
+# Dry run mode - show what would be done without making changes (default: false)
+dry_run: false
+
+# Force overwrite existing pack directories/archives (default: false)
+force_overwrite: false
+
+# Allow generation of packs for deprecated servers (default: false)
+allow_deprecated: false
+
+# =============================================================================
+# GENERATE COMMAND CONFIGURATION
+# =============================================================================
+
+generate:
+  # Default package type when generating from servers with multiple packages (default: oci)
+  # Valid values: npm, pypi, oci, nuget
+  package_type: oci
+
+  # Default transport type when generating from servers with multiple transports (default: http)
+  # Valid values: stdio, http, sse
+  transport_type: http
+
+# =============================================================================
+# SERVER COMMAND CONFIGURATION
+# =============================================================================
+
 server:
-  # Server address to bind to
+  # Server address to bind to (default: :8080)
   addr: :8080
-  # Read timeout in seconds
+
+  # Read timeout in seconds (default: 10)
   read_timeout: 10
-  # Write timeout in seconds
+
+  # Write timeout in seconds (default: 10)
   write_timeout: 10
 
-# Watch-specific configuration
+# =============================================================================
+# WATCH COMMAND CONFIGURATION
+# =============================================================================
+
 watch:
-  # Poll interval in seconds (default: 300)
+  # Poll interval in seconds - minimum 30 seconds (default: 300)
   poll_interval: 300
-  # Comma-separated list of server names to filter (empty = all servers)
-  filter_names: ""
-  # Comma-separated list of package types to filter (default: npm,pypi,oci,nuget)
-  filter_package_types: "npm,pypi,oci,nuget"
-  # State file to persist watch state between runs
-  state_file: watch.json
-  # Maximum concurrent pack generations
+
+  # Filter by server names (default: empty = all servers)
+  # Examples:
+  # - ["fastapi-mcp"] - only this specific server
+  # - ["fastapi*", "*sql*"] - wildcard patterns
+  filter_names: []
+
+  # Filter by package types (default: all supported types)
+  # Valid values: npm, pypi, oci, nuget
+  filter_package_types:
+    - npm
+    - pypi
+    - oci
+    - nuget
+
+  # Filter by transport types (default: all supported types)
+  # Valid values: stdio, http, sse
+  filter_transport_types:
+    - stdio
+    - http
+    - sse
+
+  # State file to persist watch state between runs (default: ./watch.json)
+  state_file: ./watch.json
+
+  # Maximum concurrent pack generations (default: 5, minimum: 1)
   max_concurrent: 5
-  # Enable TUI mode for interactive terminal interface
+
+  # Enable Terminal UI mode for interactive interface (default: false)
+  # When enabled, shows progress and statistics in a terminal UI
   enable_tui: false
+
+# =============================================================================
+# EXAMPLE CONFIGURATIONS
+# =============================================================================
+
+# Example 1: Development setup with verbose logging
+# env: dev
+# log_level: debug
+# output_dir: ./dev-packs
+# force_overwrite: true
+
+# Example 2: Production watch setup for specific servers
+# watch:
+#   poll_interval: 600  # 10 minutes
+#   filter_names:
+#     - "anthropic/*"
+#     - "fastapi-mcp"
+#   filter_package_types: ["oci"]
+#   filter_transport_types: ["http", "sse"]
+#   max_concurrent: 10
+#   enable_tui: true
+
+# Example 3: Continuous integration setup
+# env: prod
+# log_level: info
+# output_type: archive
+# allow_deprecated: false
+# dry_run: false

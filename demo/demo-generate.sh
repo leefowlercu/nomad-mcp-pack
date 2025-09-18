@@ -237,11 +237,11 @@ main() {
     if [[ $RESULT -ne 0 ]]; then
         print_success "Command failed as expected (pack already exists)\n"
         
-        print_info "Now let's use --force to overwrite:"
-        print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR --force"
+        print_info "Now let's use --force-overwrite to overwrite:"
+        print_command "nomad-mcp-pack generate ${DEMO_SERVER_NPM}@latest --package-type npm --output-dir $DEMO_OUTPUT_DIR --force-overwrite"
         wait_for_user
-        nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR --force
-        print_success "Pack overwritten successfully with --force!"
+        nomad-mcp-pack generate "${DEMO_SERVER_NPM}@latest" --package-type npm --output-dir $DEMO_OUTPUT_DIR --force-overwrite
+        print_success "Pack overwritten successfully with --force-overwrite!"
     fi
     
     wait_for_user

@@ -1,307 +1,343 @@
 # Integration Tests
 
-This directory contains integration tests for the `nomad-mcp-pack` Registry Client. These tests run against a real MCP Registry instance to verify that our client works correctly with the actual API.
+This directory contains integration tests for `nomad-mcp-pack` that test the complete workflows from the MCP Registry through pack generation and deployment.
 
-## Prerequisites
+## Test Organization
 
-### 1. Docker and Docker Compose
+Integration tests are organized by the integrations they validate:
 
-Make sure you have Docker and Docker Compose installed:
+### Registry ↔ nomad-mcp-pack Integration
+- **`registry_generate/`** - Tests the `generate` command against the MCP Registry
+- **`registry_watch/`** - Tests the `watch` command with registry polling
+- **`registry_server/`** - Tests the HTTP `server` command *(planned)*
 
-```bash
-# Check Docker
-docker --version
+### nomad-mcp-pack ↔ Nomad Integration *(planned)*
+- **`nomad_deploy/`** - Tests deploying generated packs to Nomad
+- **`nomad_lifecycle/`** - Tests pack lifecycle management in Nomad
 
-# Check Docker Compose
-docker-compose --version
-```
+## Quick Start
 
-### 2. Local MCP Registry
+### Prerequisites
 
-The integration tests require a local MCP Registry running on `http://localhost:8080`. You can start this using the official MCP Registry docker-compose setup.
+1. **Docker** - Required for local MCP Registry
+2. **Go 1.21+** - For running tests
+3. **Git submodules** - MCP Registry submodule must be initialized
 
-#### Starting the Local Registry
-
-The registry is included as a Git submodule in this directory. Use the Makefile targets from the project root:
-
-```bash
-# From project root
-make registry-up
-```
-
-This will automatically initialize the submodule if needed and start the registry. Wait for the registry to be ready:
+### Initialize Submodules
 
 ```bash
-# Check if it's running
-curl http://localhost:8080/v0/health
+# Initialize the MCP Registry submodule (v1.0.0)
+git submodule update --init --recursive
 ```
 
-You should see a response like:
-```json
-{
-  "status": "ok",
-  "github_client_id": "..."
-}
-```
-
-#### Stopping the Local Registry
+### Run All Integration Tests
 
 ```bash
-# From project root
-make registry-down
-```
-
-## Running Integration Tests
-
-### Using Make (Recommended)
-
-From the project root directory:
-
-```bash
-# Run integration tests
+# Start local registry and run all tests
 make test-integration
 
-# Run integration tests with verbose output
-make test-integration-verbose
-
-# Run only unit tests (skip integration)
-make test-unit
-
-# Start local registry
-make registry-up
-
-# Stop local registry
-make registry-down
+# Or manually:
+cd tests/integration/registry
+docker-compose up -d
+cd ../..
+go test ./tests/integration/... -v
 ```
 
-### Using Go Commands Directly
+### Run Specific Test Suites
 
 ```bash
-# Run integration tests from project root
-go test -v ./tests/integration
+# Only registry_generate tests
+go test ./tests/integration/registry_generate/... -v
 
-# Run with timeout
-go test -timeout 60s -v ./tests/integration
+# Only registry_watch tests
+go test ./tests/integration/registry_watch/... -v
 
-# Run specific test
-go test -v ./tests/integration -run TestIntegrationListServers
+# Only registry tests
+go test ./tests/integration/registry_*/... -v
 
-# Run in short mode (skips integration tests)
-go test -short -v ./tests/integration
+# Only nomad tests (planned)
+go test ./tests/integration/nomad_*/... -v
 ```
 
-## Environment Variables
+## Configuration
 
-The integration tests support several environment variables for configuration:
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `INTEGRATION_TEST_REGISTRY_URL` | `http://localhost:8080` | URL of the MCP Registry to test against |
-| `SKIP_INTEGRATION_TESTS` | `false` | Set to `true` to forcibly skip integration tests |
-| `INTEGRATION_TEST_TIMEOUT` | `30s` | Timeout for individual test operations |
+| `INTEGRATION_REGISTRY_URL` | `http://localhost:8080` | Registry URL for tests |
+| `USE_LIVE_REGISTRY` | `false` | Use live registry instead of local |
+| `SKIP_REGISTRY_TESTS` | `false` | Skip all registry integration tests |
+| `KEEP_TEST_OUTPUT` | `false` | Keep generated test files for debugging |
+| `KEEP_WATCH_LOGS` | `false` | Keep watch command logs for debugging |
+| `WATCH_TEST_TIMEOUT` | `2m` | Timeout for watch tests (minimum 30s) |
 
-### Examples
+### Test Registry Options
+
+#### Option 1: Local Docker Registry (Default)
 
 ```bash
-# Test against a different registry URL
-INTEGRATION_TEST_REGISTRY_URL=http://registry.example.com:8080 go test -v ./tests/integration
-
-# Skip integration tests
-SKIP_INTEGRATION_TESTS=true go test -v ./tests/integration
-
-# Use longer timeout
-INTEGRATION_TEST_TIMEOUT=60s go test -v ./tests/integration
-```
-
-## Test Categories
-
-### Core API Tests
-- **TestIntegrationListServers**: Tests server listing with various options
-- **TestIntegrationSearchServers**: Tests server search functionality
-- **TestIntegrationGetLatestServers**: Tests filtering for latest versions
-- **TestIntegrationGetUpdatedServers**: Tests time-based filtering
-- **TestIntegrationGetLatestActiveServer**: Tests semantic version resolution
-- **TestIntegrationGetServerByNameAndVersion**: Tests specific server retrieval
-
-### Edge Case Tests
-- **TestIntegrationPagination**: Tests cursor-based pagination
-- **TestIntegrationErrorHandling**: Tests error scenarios and timeout handling
-- **TestIntegrationConcurrency**: Tests thread-safety of the client
-
-## Test Behavior
-
-### Automatic Skipping
-
-Integration tests will automatically skip in these scenarios:
-1. Running with `go test -short`
-2. Environment variable `SKIP_INTEGRATION_TESTS=true`
-3. Local registry not available at the configured URL
-
-### Test Data
-
-The tests are designed to work with whatever data is available in the registry. They:
-- Don't create or modify data (read-only tests)
-- Adapt to available servers in the registry
-- Skip tests that require specific data if it's not available
-- Use realistic search terms and parameters
-
-### Cleanup
-
-Since these are read-only tests, no cleanup is required. The tests don't modify the registry state.
-
-## Registry Submodule
-
-The MCP Registry is included as a Git submodule at `tests/integration/registry/` pinned to v1.0.0 to ensure consistent integration testing. The submodule is automatically initialized when using the Makefile targets.
-
-### Manual Submodule Operations
-
-**Initialize submodule manually:**
-```bash
-# From project root
-git submodule update --init tests/integration/registry
-```
-
-**Update registry to latest version:**
-```bash
-# From project root
-make registry-update
-git commit -m "chore: update registry submodule to latest version"
-```
-
-**Check submodule status:**
-```bash
-git submodule status tests/integration/registry
-```
-
-**Working with the registry directly:**
-```bash
-# Navigate to submodule
+# Start local registry
 cd tests/integration/registry
+docker-compose up -d
 
-# Check current version
-git describe --tags
+# Run tests (uses localhost:8080)
+go test ./tests/integration/registry_generate/... -v
 
-# View available tags
-git tag | grep -E "^v[0-9]" | sort -V
+# Stop registry
+docker-compose down
 ```
 
-## Troubleshooting
+#### Option 2: Live Registry
 
-### Registry Not Starting
+```bash
+# Use live registry at registry.modelcontextprotocol.io
+USE_LIVE_REGISTRY=true go test ./tests/integration/registry_generate/... -v
+```
 
-If the registry fails to start:
+#### Option 3: Custom Registry URL
 
-1. Check if ports 8080 and 5432 are already in use:
-   ```bash
-   lsof -i :8080
-   lsof -i :5432
-   ```
+```bash
+# Use custom registry URL
+INTEGRATION_REGISTRY_URL=https://my-registry.example.com go test ./tests/integration/registry_generate/... -v
+```
 
-2. Check Docker logs:
-   ```bash
-   docker-compose logs registry
-   docker-compose logs postgres
-   ```
+## Test Structure
 
-3. Ensure you have enough disk space and memory for PostgreSQL
+### Common Utilities (`common/`)
 
-### Tests Timing Out
+Shared utilities for all integration tests:
 
-If tests are timing out:
+- **`registry.go`** - Registry lifecycle management
+- **`cli.go`** - CLI command execution helpers
+- **`assertions.go`** - Test assertion utilities
 
-1. Increase the timeout:
-   ```bash
-   INTEGRATION_TEST_TIMEOUT=60s go test -v ./tests/integration
-   ```
+### Test Patterns
 
-2. Check registry performance:
-   ```bash
-   curl -w "Time: %{time_total}s\n" http://localhost:8080/v0/health
-   ```
-
-3. Check if the registry is under load or needs restart
-
-### No Test Data Available
-
-If tests are skipping due to no available data:
-
-1. Check if the registry has any servers:
-   ```bash
-   curl http://localhost:8080/v0/servers
-   ```
-
-2. The registry might be empty in a fresh setup - this is normal
-3. Tests will skip gracefully when no suitable test data is available
-
-### Connection Refused
-
-If you get "connection refused" errors:
-
-1. Verify the registry is running:
-   ```bash
-   docker ps | grep registry
-   ```
-
-2. Check the correct URL:
-   ```bash
-   curl http://localhost:8080/v0/health
-   ```
-
-3. Verify no firewall is blocking the connection
-
-## Adding New Integration Tests
-
-When adding new integration tests:
-
-1. Follow the naming convention: `TestIntegration<FeatureName>`
-2. Always call `skipIfNoRegistry(t)` at the start
-3. Use the helper functions from `helpers_test.go`
-4. Make tests resilient to different registry states
-5. Include proper error handling and logging
-6. Test both success and failure paths when possible
-
-### Example Test Template
+Each test suite follows this pattern:
 
 ```go
-func TestIntegrationNewFeature(t *testing.T) {
-    skipIfNoRegistry(t)
-    
-    client := createTestClient(t)
-    checkRegistryHealth(t, client)
-    
-    ctx, cancel := context.WithTimeout(context.Background(), getTestTimeout())
-    defer cancel()
-    
-    // Your test logic here
-    
-    resp, err := client.SomeMethod(ctx, params)
-    assertNoError(t, err, "SomeMethod failed")
-    assertNotNil(t, resp, "Response should not be nil")
-    
-    // Additional assertions...
+func TestMain(m *testing.M) {
+    // Global setup (build binary, start registry)
+    code := m.Run()
+    // Global cleanup
+    os.Exit(code)
+}
+
+func TestFeature(t *testing.T) {
+    // Setup test-specific resources
+    t.Cleanup(func() { /* cleanup */ })
+
+    // Run CLI commands using common.CLIRunner
+    // Assert results using common.Assert* functions
 }
 ```
 
-## Performance Testing
+## Registry Generate Tests (`registry_generate/`)
 
-The integration tests include basic performance and concurrency tests. For more extensive performance testing:
+Tests the `generate` command against the MCP Registry.
+
+### Test Coverage
+
+- ✅ **Basic NPM package generation** - Standard NPM package workflow
+- ✅ **Basic PyPI package generation** - Standard PyPI package workflow
+- ✅ **Latest version handling** - Using `@latest` version specifier
+- ✅ **Dry run mode** - Testing `--dry-run` flag
+- ✅ **Archive output** - Testing `--output-type archive`
+- ✅ **Invalid servers** - Error handling for nonexistent servers
+- ✅ **Invalid formats** - Error handling for malformed server specs
+- ✅ **Force overwrite** - Testing `--force-overwrite` flag
+
+### Known Test Servers
+
+The local registry includes these test servers (seed data):
+
+| Server | Version | Package Type | Transport | Identifier |
+|--------|---------|--------------|-----------|------------|
+| `io.github.21st-dev/magic-mcp` | `0.0.1-seed` | `npm` | `stdio` | `@21st-dev/magic` |
+| `io.github.adfin-engineering/mcp-server-adfin` | `0.0.1-seed` | `pypi` | `stdio` | `adfinmcp` |
+
+### Running Generate Tests
 
 ```bash
-# Run benchmarks
-go test -bench=. -v ./tests/integration
+# All generate tests
+go test ./tests/integration/registry_generate/... -v
 
-# Run with CPU profiling
-go test -bench=. -cpuprofile=cpu.prof ./tests/integration
+# Specific test
+go test ./tests/integration/registry_generate/... -run TestGenerateFromRegistry_BasicNPM -v
 
-# Run with memory profiling  
-go test -bench=. -memprofile=mem.prof ./tests/integration
+# With debugging output
+KEEP_TEST_OUTPUT=true go test ./tests/integration/registry_generate/... -v
+```
+
+## Debugging
+
+### Keep Test Output
+
+```bash
+# Keep generated files for inspection
+KEEP_TEST_OUTPUT=true go test ./tests/integration/registry_generate/... -v
+```
+
+Test files will be preserved in temporary directories and paths logged.
+
+### Registry Health Check
+
+```bash
+# Check if local registry is healthy
+curl http://localhost:8080/v0/health
+
+# List available servers
+curl http://localhost:8080/v0/servers?limit=10
+```
+
+### Binary Building
+
+Tests automatically build the `nomad-mcp-pack` binary once and reuse it. To force rebuild:
+
+```bash
+# Clean and rebuild
+go clean -testcache
+go test ./tests/integration/registry_generate/... -v
+```
+
+### Registry Logs
+
+```bash
+# View registry logs
+cd tests/integration/registry
+docker-compose logs -f registry
 ```
 
 ## CI/CD Integration
 
-For continuous integration:
+### Skip Integration Tests
 
-1. Tests automatically skip when registry is not available
-2. Use `go test -short` to skip integration tests in fast CI runs
-3. Set `SKIP_INTEGRATION_TESTS=true` to disable integration tests
-4. Consider running integration tests only on specific branches or schedules
+```bash
+# Skip all integration tests (for fast CI)
+go test -short ./...
+
+# Or set environment variable
+SKIP_REGISTRY_TESTS=true go test ./tests/integration/...
+```
+
+### Test with Live Registry
+
+```bash
+# Test against production registry
+USE_LIVE_REGISTRY=true go test ./tests/integration/registry_generate/... -v
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Registry not starting:**
+```bash
+# Check Docker is running
+docker version
+
+# Check port not in use
+lsof -i :8080
+
+# Reset registry
+cd tests/integration/registry
+docker-compose down -v
+docker-compose up -d
+```
+
+**Test binary build fails:**
+```bash
+# Check Go environment
+go version
+go mod tidy
+
+# Build manually
+go build -o /tmp/nomad-mcp-pack ./cmd/nomadmcppack.go
+```
+
+**Tests timing out:**
+```bash
+# Increase timeout
+go test -timeout 5m ./tests/integration/registry_generate/... -v
+```
+
+### Getting Help
+
+1. Check registry health: `curl http://localhost:8080/v0/health`
+2. Review registry logs: `docker-compose logs registry`
+3. Enable debug output: `KEEP_TEST_OUTPUT=true`
+4. Check test timeout settings in `helpers_test.go`
+
+## Registry Watch Tests (`registry_watch/`)
+
+Tests the `watch` command against the MCP Registry with continuous polling and pack generation.
+
+### Test Coverage
+
+- ✅ **Basic polling** - Standard watch polling workflow
+- ✅ **State management** - State file creation and persistence
+- ✅ **Name filtering** - Server name pattern filtering
+- ✅ **Package type filtering** - Package type filtering (npm, pypi, etc.)
+- ✅ **Transport type filtering** - Transport type filtering (stdio, sse, etc.)
+- ✅ **Error recovery** - Handling corrupted state files
+- ✅ **Dry run mode** - Testing `--dry-run` flag
+- ✅ **Signal handling** - Graceful shutdown on SIGTERM/SIGINT
+- ✅ **Pre-existing packs** - Overwrite behavior testing
+- ✅ **Concurrent generation** - Testing `--max-concurrent` option
+
+### Special Considerations
+
+**Minimum Poll Interval**: All watch tests respect the 30-second minimum poll interval configured in the application. Tests use helper functions to run the watch command for specific durations or until certain conditions are met.
+
+**State File Management**: Tests create unique state files to avoid conflicts and test state persistence, recovery, and corruption scenarios.
+
+**Signal Handling**: Tests verify graceful shutdown behavior when receiving SIGTERM signals.
+
+### Running Watch Tests
+
+```bash
+# All watch tests
+go test ./tests/integration/registry_watch/... -v
+
+# Specific test
+go test ./tests/integration/registry_watch/... -run TestWatch_BasicPolling -v
+
+# With debugging output and logs
+KEEP_WATCH_LOGS=true KEEP_TEST_OUTPUT=true go test ./tests/integration/registry_watch/... -v
+
+# Custom timeout (minimum 30s)
+WATCH_TEST_TIMEOUT=5m go test ./tests/integration/registry_watch/... -v
+```
+
+### Test Helper Functions
+
+The watch tests include specialized helper functions:
+
+- **`runWatchForDuration()`** - Runs watch command for specific time periods
+- **`runWatchUntilGeneration()`** - Runs until expected number of packs generated
+- **`readStateFile()`** - Parses and validates state file contents
+- **`countGeneratedPacks()`** - Counts generated pack directories/archives
+- **`waitForStateFile()`** - Waits for state file creation with timeout
+- **`createCorruptedStateFile()`** - Creates invalid state files for error testing
+
+## Future Test Suites
+
+### Planned Registry Integration Tests
+
+- **Server Tests** (`registry_server/`) - Test HTTP server API endpoints
+
+### Planned Nomad Integration Tests
+
+- **Deploy Tests** (`nomad_deploy/`) - Test pack deployment to Nomad
+- **Lifecycle Tests** (`nomad_lifecycle/`) - Test pack start/stop/update cycles
+
+### Contributing
+
+When adding new integration tests:
+
+1. Follow the established patterns in `registry_generate/`
+2. Use common utilities in `common/` package
+3. Add fixtures for known test data
+4. Include both success and error scenarios
+5. Update this documentation
