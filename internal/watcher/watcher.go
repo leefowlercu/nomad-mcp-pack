@@ -66,14 +66,16 @@ func (w *Watcher) poll(ctx context.Context) error {
 	output.Progress("Starting poll cycle...")
 	slog.Info("starting poll cycle", "start_time", startTime.Format(time.RFC3339))
 
+	// Fetch servers from the registry, applying name filters if provided
 	servers, err := w.fetchServers(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch servers: %w", err)
 	}
 
 	output.Info("Fetched %d servers from registry", len(servers))
-	slog.Info("fetched servers from registry", "count", len(servers))
+	slog.Info("watcher poll cycle; fetched servers from registry", "count", len(servers))
 
+	// Figure out which servers need packs generated based on filters and state
 	toGenerate := w.filterServers(servers)
 	if len(toGenerate) == 0 {
 		output.Info("No packs need generation")
@@ -83,9 +85,9 @@ func (w *Watcher) poll(ctx context.Context) error {
 	}
 
 	output.Info("%d packs need generation", len(toGenerate))
-	slog.Debug("packs need generation", "count", len(toGenerate))
+	slog.Info("watcher poll cycle; packs need generation", "count", len(toGenerate))
 
-	// Generate packs with concurrency control
+	// Generate packs
 	successCount, generateErr := w.generatePacks(ctx, toGenerate)
 
 	// Always update and save state, even if some generations failed
@@ -100,6 +102,7 @@ func (w *Watcher) poll(ctx context.Context) error {
 		slog.Error("pack generation completed with errors", "error", generateErr)
 	}
 
+	// Report summary of the poll cycle
 	if generateErr != nil {
 		output.Info("Poll cycle completed (%v, %d succeeded, %d failed)", time.Since(startTime).Round(time.Second), successCount, len(toGenerate)-successCount)
 	} else {
@@ -111,12 +114,12 @@ func (w *Watcher) poll(ctx context.Context) error {
 }
 
 func (w *Watcher) fetchServers(ctx context.Context) ([]v0.ServerJSON, error) {
-	// If name filters are provided, use search API for efficiency
+	// Fetch by name if name filter provided
 	if len(w.config.NameFilter.Names) > 0 {
-		return w.fetchServersWithSearch(ctx)
+		return w.fetchServersByName(ctx)
 	}
 
-	// Fetch all servers using the ListAll helper
+	// Fetch all servers if no name filter provided
 	opts := &mcp.ServerListOptions{}
 	allServers, err := w.client.Servers.ListAll(ctx, opts)
 	if err != nil {
@@ -126,24 +129,22 @@ func (w *Watcher) fetchServers(ctx context.Context) ([]v0.ServerJSON, error) {
 	return allServers, nil
 }
 
-func (w *Watcher) fetchServersWithSearch(ctx context.Context) ([]v0.ServerJSON, error) {
+func (w *Watcher) fetchServersByName(ctx context.Context) ([]v0.ServerJSON, error) {
 	var allServers []v0.ServerJSON
-	seenServers := make(map[string]bool) // To deduplicate servers
 
-	// Search for each name filter individually
+	// Track seen servers to manage deduplication
+	seenServers := make(map[string]bool)
+
+	// Fetch servers by exact name for each name filter
 	for _, nameFilter := range w.config.NameFilter.Names {
-		slog.Debug("searching for servers", "filter", nameFilter)
+		slog.Debug("fetching servers by name", "name", nameFilter)
 
-		opts := &mcp.ServerListOptions{
-			Search: nameFilter,
-		}
-
-		servers, err := w.client.Servers.ListAll(ctx, opts)
+		servers, err := w.client.Servers.GetByName(ctx, nameFilter)
 		if err != nil {
-			return nil, fmt.Errorf("failed to search servers for %s: %w", nameFilter, err)
+			return nil, fmt.Errorf("failed to get servers by name %s: %w", nameFilter, err)
 		}
 
-		// Add unique servers
+		// Deduplicate server entries in case user provided duplicate name filters
 		for _, server := range servers {
 			serverKey := fmt.Sprintf("%s@%s", server.Name, server.Version)
 			if !seenServers[serverKey] {
@@ -153,55 +154,55 @@ func (w *Watcher) fetchServersWithSearch(ctx context.Context) ([]v0.ServerJSON, 
 		}
 	}
 
-	slog.Debug("search completed", "total_servers", len(allServers))
+	slog.Debug("fetch by name completed", "total_servers", len(allServers))
+
 	return allServers, nil
 }
 
-// filterServers filters servers based on configuration and state
 func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 	var tasks []ServerGenerateTask
 
 	for _, srv := range servers {
-		// Parse server name to get namespace and name
-		// The server name should be in format "namespace/name"
 		nameSpec, err := server.ParseNameSpec(srv.Name)
 		if err != nil {
-			slog.Warn("invalid server name format", "name", srv.Name, "error", err)
+			output.Warning("Polled server %q has invalid server name format, skipping", srv.Name)
+			slog.Warn("invalid server name format found during watcher filtering", "name", srv.Name, "error", err)
 			continue
 		}
 
 		namespace := nameSpec.Namespace
 		name := nameSpec.Name
-		serverFullName := fmt.Sprintf("%s/%s", namespace, name)
 
-		// Check name filter
-		if !w.config.NameFilter.Matches(serverFullName) {
-			slog.Debug("server filtered by name", "server", serverFullName)
+		// Check against provided name filter
+		if !w.config.NameFilter.Matches(srv.Name) {
+			slog.Debug("polled server does not match name filter, skipping", "server", srv.Name)
 			continue
 		}
 
-		// Check if server has packages (skip remote-only servers)
+		// Skip remote-only servers
 		if len(srv.Packages) == 0 {
-			slog.Debug("server matched filter but is remote-only (no packages defined), skipping",
-				"server", serverFullName)
+			slog.Debug("polled server matched name filter but is remote-only (no packages defined), skipping",
+				"server", srv.Name,
+			)
 			continue
 		}
 
-		// Check each package type
+		// Check against provided package type and transport type filters
+		// Then check if generation is needed based on state
 		for _, pkg := range srv.Packages {
-			// Check package type filter
+			// Check against provided package type filter
 			if !w.config.PackageFilter.Matches(pkg.RegistryType) {
-				slog.Debug("package filtered by type",
-					"server", serverFullName,
+				slog.Debug("polled server does not match package type filter, skipping",
+					"server", srv.Name,
 					"type", pkg.RegistryType,
 				)
 				continue
 			}
 
-			// Check transport type filter
+			// Check against provided transport type filter
 			if !w.config.TransportFilter.Matches(pkg.Transport.Type) {
-				slog.Debug("package filtered by transport type",
-					"server", serverFullName,
+				slog.Debug("polled server does not match transport type filter, skipping",
+					"server", srv.Name,
 					"package_type", pkg.RegistryType,
 					"transport_type", pkg.Transport.Type,
 				)
@@ -210,15 +211,13 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 
 			// Check if generation is needed based on state
 			if w.state.NeedsGeneration(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
-				pkgCopy := pkg // Copy to avoid reference issues
+				pkgCopy := pkg
 				tasks = append(tasks, ServerGenerateTask{
-					Server:        srv,
-					PackageType:   pkg.RegistryType,
-					TransportType: pkg.Transport.Type,
-					Package:       &pkgCopy,
+					Server:  srv,
+					Package: &pkgCopy,
 				})
 				slog.Debug("server needs generation",
-					"server", serverFullName,
+					"server", srv.Name,
 					"version", srv.Version,
 					"package_type", pkg.RegistryType,
 					"transport_type", pkg.Transport.Type,
@@ -231,6 +230,7 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 }
 
 func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask) (int, error) {
+	// Use semaphore for concurrency control
 	sem := make(chan struct{}, w.config.MaxConcurrent)
 
 	var wg sync.WaitGroup
@@ -243,7 +243,6 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 		go func(t ServerGenerateTask) {
 			defer wg.Done()
 
-			// Acquire semaphore
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
@@ -253,9 +252,9 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 
 			if err := w.generateSinglePack(ctx, t); err != nil {
 				failureChan <- fmt.Errorf("failed to generate %s@%s:%s:%s; %w",
-					t.Server.Name, t.Server.Version, t.PackageType, t.TransportType, err)
+					t.Server.Name, t.Server.Version, t.Package.RegistryType, t.Package.Transport.Type, err)
 			} else {
-				successChan <- fmt.Sprintf("%s@%s:%s:%s", t.Server.Name, t.Server.Version, t.PackageType, t.TransportType)
+				successChan <- fmt.Sprintf("%s@%s:%s:%s", t.Server.Name, t.Server.Version, t.Package.RegistryType, t.Package.Transport.Type)
 			}
 		}(task)
 	}
@@ -288,9 +287,7 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 	}
 
 	if len(errs) > 0 {
-		slog.Info("pack generation completed with errors",
-			"total_errors", len(errs),
-			"critical_errors", len(criticalErrs))
+		slog.Info("pack generation completed with errors", "total_errors", len(errs), "critical_errors", len(criticalErrs))
 	}
 
 	return successCount, nil
@@ -299,12 +296,12 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTask) error {
 	serverName := task.Server.Name
 
-	output.Progress("Generating pack: %s@%s (%s, %s)", serverName, task.Server.Version, task.PackageType, task.TransportType)
+	output.Progress("Generating pack: %s@%s (%s, %s)", serverName, task.Server.Version, task.Package.RegistryType, task.Package.Transport.Type)
 	slog.Info("generating pack",
 		"server", serverName,
 		"version", task.Server.Version,
-		"package_type", task.PackageType,
-		"transport_type", task.TransportType,
+		"package_type", task.Package.RegistryType,
+		"transport_type", task.Package.Transport.Type,
 	)
 
 	if err := generator.Run(ctx, &task.Server, task.Package, w.generateOpts); err != nil {
@@ -323,19 +320,19 @@ func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTas
 		Namespace:     namespace,
 		Name:          name,
 		Version:       task.Server.Version,
-		PackageType:   task.PackageType,
-		TransportType: task.TransportType,
+		PackageType:   task.Package.RegistryType,
+		TransportType: task.Package.Transport.Type,
 		UpdatedAt:     now,
 		GeneratedAt:   now,
 	}
 	w.state.SetServer(state)
 
-	output.Success("Pack generated: %s@%s (%s, %s)", serverName, task.Server.Version, task.PackageType, task.TransportType)
+	output.Success("Pack generated: %s@%s (%s, %s)", serverName, task.Server.Version, task.Package.RegistryType, task.Package.Transport.Type)
 	slog.Info("pack generated successfully",
 		"server", serverName,
 		"version", task.Server.Version,
-		"package_type", task.PackageType,
-		"transport_type", task.TransportType,
+		"package_type", task.Package.RegistryType,
+		"transport_type", task.Package.Transport.Type,
 	)
 
 	return nil

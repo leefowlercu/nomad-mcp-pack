@@ -72,8 +72,6 @@ func (f *TransportTypeFilter) Matches(registryTransportType string) bool {
 }
 
 type ServerGenerateTask struct {
-	Server        v0.ServerJSON
-	PackageType   string
-	TransportType string
-	Package       *model.Package
+	Server  v0.ServerJSON
+	Package *model.Package
 }
