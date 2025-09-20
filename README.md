@@ -77,7 +77,7 @@ nomad-mcp-pack watch
 nomad-mcp-pack watch --poll-interval 60
 
 # Filter by exact server names
-nomad-mcp-pack watch --filter-names "io.github.fastapi/fastapi-mcp,io.github.example/sql-server"
+nomad-mcp-pack watch --filter-server-names "io.github.fastapi/fastapi-mcp,io.github.example/sql-server"
 
 # Filter by package types
 nomad-mcp-pack watch --filter-package-types "oci,npm"
@@ -133,7 +133,7 @@ env: prod
 
 watch:
   poll_interval: 300
-  filter_names: ["io.github.fastapi/fastapi-mcp", "io.github.example/database-server"]
+  filter_server_names: ["io.github.fastapi/fastapi-mcp", "io.github.example/database-server"]
   filter_package_types: ["oci", "npm"]
   max_concurrent: 5
 
@@ -197,7 +197,7 @@ app {
 ```bash
 # Generate packs for specific servers
 nomad-mcp-pack watch \
-  --filter-names "io.github.myorg/server1,io.github.myorg/server2" \
+  --filter-server-names "io.github.myorg/server1,io.github.myorg/server2" \
   --output-type archive \
   --poll-interval 300 \
   --max-concurrent 10

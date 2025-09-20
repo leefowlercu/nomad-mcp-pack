@@ -36,7 +36,7 @@ type ServerConfig struct {
 
 type WatchConfig struct {
 	PollInterval         int      `mapstructure:"poll_interval"`
-	FilterNames          []string `mapstructure:"filter_names"`
+	FilterServerNames    []string `mapstructure:"filter_server_names"`
 	FilterPackageTypes   []string `mapstructure:"filter_package_types"`
 	FilterTransportTypes []string `mapstructure:"filter_transport_types"`
 	StateFile            string   `mapstructure:"state_file"`

@@ -27,7 +27,7 @@ func InitConfig() {
 	viper.SetDefault("server.read_timeout", DefaultConfig.ServerReadTimeout)
 	viper.SetDefault("server.write_timeout", DefaultConfig.ServerWriteTimeout)
 	viper.SetDefault("watch.poll_interval", DefaultConfig.WatchPollInterval)
-	viper.SetDefault("watch.filter_names", DefaultConfig.WatchFilterNames)
+	viper.SetDefault("watch.filter_server_names", DefaultConfig.WatchFilterServerNames)
 	viper.SetDefault("watch.filter_package_types", DefaultConfig.WatchFilterPackageTypes)
 	viper.SetDefault("watch.filter_transport_types", DefaultConfig.WatchFilterTransportTypes)
 	viper.SetDefault("watch.state_file", DefaultConfig.WatchStateFile)

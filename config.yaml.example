@@ -87,7 +87,7 @@ watch:
   # Examples:
   # - ["io.github.containers/kubernetes-mcp-server"] - only this specific server
   # - ["ai.waystation/gmail", "com.make/mcp-server"] - multiple specific servers
-  filter_names: []
+  filter_server_names: []
 
   # Filter by package types (default: all supported types)
   # Valid values: npm, pypi, oci, nuget
@@ -127,7 +127,7 @@ watch:
 # Example 2: Production watch setup for specific servers
 # watch:
 #   poll_interval: 600  # 10 minutes
-#   filter_names:
+#   filter_server_names:
 #     - "io.github.containers/kubernetes-mcp-server"
 #     - "ai.waystation/gmail"
 #     - "com.make/mcp-server"

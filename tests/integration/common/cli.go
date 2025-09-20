@@ -210,9 +210,9 @@ func (w WithWatchOutputDir) Args() []string { return []string{"--output-dir", st
 type WithPollInterval int
 func (w WithPollInterval) Args() []string { return []string{"--poll-interval", fmt.Sprintf("%d", int(w))} }
 
-// WithFilterNames sets the filter names for watch command
-type WithFilterNames []string
-func (w WithFilterNames) Args() []string { return []string{"--filter-names", strings.Join(w, ",")} }
+// WithFilterServerNames sets the filter server names for watch command
+type WithFilterServerNames []string
+func (w WithFilterServerNames) Args() []string { return []string{"--filter-server-names", strings.Join(w, ",")} }
 
 // ServerOption represents an option for the server command
 type ServerOption interface {

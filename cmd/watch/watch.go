@@ -35,6 +35,9 @@ var WatchCmd = &cobra.Command{
   # Custom poll interval (in seconds)
   nomad-mcp-pack watch --poll-interval 300
 
+  # Filter by specific server names
+  nomad-mcp-pack watch --filter-server-names "io.github.containers/kubernetes-mcp-server,ai.waystation/gmail"
+
   # Dry run to see what would be generated
   nomad-mcp-pack watch --dry-run`,
 	PreRunE: runValidate,
@@ -42,7 +45,7 @@ var WatchCmd = &cobra.Command{
 }
 
 func init() {
-	WatchCmd.Flags().StringSlice("filter-names", config.DefaultConfig.WatchFilterNames, "Filter by MCP Server names (comma-separated values)")
+	WatchCmd.Flags().StringSlice("filter-server-names", config.DefaultConfig.WatchFilterServerNames, "Filter by MCP Server names (comma-separated values)")
 	WatchCmd.Flags().StringSlice("filter-package-types", config.DefaultConfig.WatchFilterPackageTypes, "Filter by supported package types (comma-separated values)")
 	WatchCmd.Flags().StringSlice("filter-transport-types", config.DefaultConfig.WatchFilterTransportTypes, "Filter by transport types (comma-separated values)")
 	WatchCmd.Flags().Int("poll-interval", config.DefaultConfig.WatchPollInterval, "Polling interval in seconds")
@@ -50,7 +53,7 @@ func init() {
 	WatchCmd.Flags().Int("max-concurrent", config.DefaultConfig.WatchMaxConcurrent, "Maximum concurrent pack generations")
 	WatchCmd.Flags().Bool("enable-tui", config.DefaultConfig.WatchEnableTUI, "Show a Terminal UI instead of a log stream")
 
-	viper.BindPFlag("watch.filter_names", WatchCmd.Flags().Lookup("filter-names"))
+	viper.BindPFlag("watch.filter_server_names", WatchCmd.Flags().Lookup("filter-server-names"))
 	viper.BindPFlag("watch.filter_package_types", WatchCmd.Flags().Lookup("filter-package-types"))
 	viper.BindPFlag("watch.filter_transport_types", WatchCmd.Flags().Lookup("filter-transport-types"))
 	viper.BindPFlag("watch.poll_interval", WatchCmd.Flags().Lookup("poll-interval"))
@@ -81,7 +84,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 			"force_overwrite", cfg.ForceOverwrite,
 		),
 		slog.Group("watch_config",
-			"filter_names", cfg.Watch.FilterNames,
+			"filter_server_names", cfg.Watch.FilterServerNames,
 			"filter_package_types", cfg.Watch.FilterPackageTypes,
 			"filter_transport_types", cfg.Watch.FilterTransportTypes,
 			"poll_interval", cfg.Watch.PollInterval,
@@ -91,7 +94,7 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		),
 	)
 
-	filterNames := cfg.Watch.FilterNames
+	filterNames := cfg.Watch.FilterServerNames
 	filterPackageTypes := cfg.Watch.FilterPackageTypes
 	filterTransportTypes := cfg.Watch.FilterTransportTypes
 	pollInterval := cfg.Watch.PollInterval
@@ -152,7 +155,7 @@ func runWatch(cmd *cobra.Command, args []string) error {
 			"force_overwrite", cfg.ForceOverwrite,
 		),
 		slog.Group("watch_config",
-			"filter_names", cfg.Watch.FilterNames,
+			"filter_server_names", cfg.Watch.FilterServerNames,
 			"filter_package_types", cfg.Watch.FilterPackageTypes,
 			"filter_transport_types", cfg.Watch.FilterTransportTypes,
 			"poll_interval", cfg.Watch.PollInterval,
@@ -162,7 +165,7 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		),
 	)
 
-	filterNames := cfg.Watch.FilterNames
+	filterNames := cfg.Watch.FilterServerNames
 	filterPackageTypes := cfg.Watch.FilterPackageTypes
 	filterTransportTypes := cfg.Watch.FilterTransportTypes
 	pollInterval := cfg.Watch.PollInterval

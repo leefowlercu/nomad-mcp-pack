@@ -25,7 +25,7 @@ var DefaultConfig = struct {
 	ServerReadTimeout         int
 	ServerWriteTimeout        int
 	WatchPollInterval         int
-	WatchFilterNames          []string
+	WatchFilterServerNames    []string
 	WatchFilterPackageTypes   []string
 	WatchFilterTransportTypes []string
 	WatchStateFile            string
@@ -46,7 +46,7 @@ var DefaultConfig = struct {
 	ServerReadTimeout:         10,
 	ServerWriteTimeout:        10,
 	WatchPollInterval:         300,
-	WatchFilterNames:          []string{},
+	WatchFilterServerNames:    []string{},
 	WatchFilterPackageTypes:   ValidPackageTypes,
 	WatchFilterTransportTypes: ValidTransportTypes,
 	WatchStateFile:            "./watch.json",

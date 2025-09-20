@@ -32,7 +32,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 	slog.Info("starting watch mode",
 		"poll_interval", w.config.PollInterval,
 		"state_file", w.config.StateFilePath,
-		"filter_names", w.config.NameFilter.Names,
+		"filter_server_names", w.config.NameFilter.Names,
 		"filter_package_types", w.config.PackageFilter.Types,
 		"filter_transport_types", w.config.TransportFilter.Types,
 	)
