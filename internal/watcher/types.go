@@ -75,3 +75,21 @@ type ServerGenerateTask struct {
 	Server  v0.ServerJSON
 	Package *model.Package
 }
+
+type packGenSemaphore struct {
+	sem chan struct{}
+}
+
+func newPackGenSemaphore(maxConcurrent int) *packGenSemaphore {
+	return &packGenSemaphore{
+		sem: make(chan struct{}, maxConcurrent),
+	}
+}
+
+func (p *packGenSemaphore) Acquire() {
+	p.sem <- struct{}{}
+}
+
+func (p *packGenSemaphore) Release() {
+	<-p.sem
+}

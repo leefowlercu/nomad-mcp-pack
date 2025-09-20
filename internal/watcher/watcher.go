@@ -231,26 +231,28 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 
 func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask) (int, error) {
 	// Use semaphore for concurrency control
-	sem := make(chan struct{}, w.config.MaxConcurrent)
-
+	sem := newPackGenSemaphore(w.config.MaxConcurrent)
 	var wg sync.WaitGroup
 
+	// Channels to collect results from goroutines
 	failureChan := make(chan error, len(tasks))
 	successChan := make(chan string, len(tasks))
 
+	// Start goroutines for each task
 	for _, task := range tasks {
 		wg.Add(1)
 		go func(t ServerGenerateTask) {
 			defer wg.Done()
 
-			sem <- struct{}{}
-			defer func() { <-sem }()
+			sem.Acquire()
+			defer sem.Release()
 
 			if ctx.Err() != nil {
 				return
 			}
 
-			if err := w.generateSinglePack(ctx, t); err != nil {
+			// Generate the pack and send result to appropriate channel
+			if err := w.generatePack(ctx, t); err != nil {
 				failureChan <- fmt.Errorf("failed to generate %s@%s:%s:%s; %w",
 					t.Server.Name, t.Server.Version, t.Package.RegistryType, t.Package.Transport.Type, err)
 			} else {
@@ -293,7 +295,7 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 	return successCount, nil
 }
 
-func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTask) error {
+func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) error {
 	serverName := task.Server.Name
 
 	output.Progress("Generating pack: %s@%s (%s, %s)", serverName, task.Server.Version, task.Package.RegistryType, task.Package.Transport.Type)
