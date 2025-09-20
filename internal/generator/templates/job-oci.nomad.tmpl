@@ -1,22 +1,20 @@
-job "[[ template "job_name" . ]]" {
-  datacenters = [[ .my.datacenters | toJson ]]
-  region      = "[[ .my.region ]]"
+job [[ template "job_name" . ]] {
+  [[ template "region" . ]]
+  datacenters = [[ var "datacenters" . | toStringList ]]
   type        = "service"
   
   group "mcp-server" {
-    count = [[ .my.count ]]
+    count = [[ var "count" . ]]
 
-    {{- if and .HasTransport (ne .Transport.Type "stdio")}}
+    {{- if or (eq .Transport.Type "streamable-http") (eq .Transport.Type "sse")}}
     network {
-      port "mcp" {
-        static = 3000
-      }
+      port "http" {}
     }
 
     service {
-      name = "[[ template "job_name" . ]]-mcp"
-      port = "mcp"
-      
+      name = [[ var "service_name" . | quote ]]
+      port = "http"
+
       check {
         type     = "http"
         path     = "/health"
@@ -34,8 +32,8 @@ job "[[ template "job_name" . ]]" {
         {{- if .RegistryURL}}
         image_pull_timeout = "10m"
         {{- end}}
-        {{- if and .HasTransport (ne .Transport.Type "stdio")}}
-        ports = ["mcp"]
+        {{- if or (eq .Transport.Type "streamable-http") (eq .Transport.Type "sse")}}
+        ports = ["http"]
         {{- end}}
         
         {{- if or .Environment .RuntimeArgs .PackageArgs}}
@@ -43,20 +41,20 @@ job "[[ template "job_name" . ]]" {
           {{- if .RuntimeArgs}}
           {{- range .RuntimeArgs}}
           {{- if eq .Type "positional"}}
-          "[[ .my.{{.Name | lower}} ]]",
+          [[ var "{{.Name | lower}}" . | quote ]],
           {{- else}}
           "{{.Name}}",
-          "[[ .my.{{.Name | lower}} ]]",
+          [[ var "{{.Name | lower}}" . | quote ]],
           {{- end}}
           {{- end}}
           {{- end}}
           {{- if .PackageArgs}}
           {{- range .PackageArgs}}
           {{- if eq .Type "positional"}}
-          "[[ .my.{{.Name | lower}} ]]",
+          [[ var "{{.Name | lower}}" . | quote ]],
           {{- else}}
           "{{.Name}}",
-          "[[ .my.{{.Name | lower}} ]]",
+          [[ var "{{.Name | lower}}" . | quote ]],
           {{- end}}
           {{- end}}
           {{- end}}
@@ -67,14 +65,14 @@ job "[[ template "job_name" . ]]" {
       {{- if .Environment}}
       env {
         {{- range .Environment}}
-        {{.Name}} = "[[ .my.{{.Name | lower}} ]]"
+        {{.Name}} = [[ var "{{.Name | lower}}" . | quote ]]
         {{- end}}
       }
       {{- end}}
 
       resources {
-        cpu    = [[ .my.cpu ]]
-        memory = [[ .my.memory ]]
+        cpu    = [[ var "cpu" . ]]
+        memory = [[ var "memory" . ]]
       }
 
       {{- if .HasTransport}}

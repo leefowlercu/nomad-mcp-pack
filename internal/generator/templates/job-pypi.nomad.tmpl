@@ -1,22 +1,20 @@
-job "[[ template "job_name" . ]]" {
-  datacenters = [[ .my.datacenters | toJson ]]
-  region      = "[[ .my.region ]]"
+job [[ template "job_name" . ]] {
+  [[ template "region" . ]]
+  datacenters = [[ var "datacenters" . | toStringList ]]
   type        = "service"
   
   group "mcp-server" {
-    count = [[ .my.count ]]
+    count = [[ var "count" . ]]
 
-    {{- if and .HasTransport (ne .Transport.Type "stdio")}}
+    {{- if or (eq .Transport.Type "streamable-http") (eq .Transport.Type "sse")}}
     network {
-      port "mcp" {
-        static = 3000
-      }
+      port "http" {}
     }
 
     service {
-      name = "[[ template "job_name" . ]]-mcp"
-      port = "mcp"
-      
+      name = [[ var "service_name" . | quote ]]
+      port = "http"
+
       check {
         type     = "http"
         path     = "/health"
@@ -38,7 +36,7 @@ job "[[ template "job_name" . ]]" {
       env {
         PYTHONPATH = "${NOMAD_TASK_DIR}/local/venv/lib/python3/site-packages"
         {{- range .Environment}}
-        {{.Name}} = "[[ .my.{{.Name | lower}} ]]"
+        {{.Name}} = [[ var "{{.Name | lower}}" . | quote ]]
         {{- end}}
       }
       {{- else}}
@@ -64,18 +62,18 @@ exec python -m {{.PackageID}} \
 {{- if .RuntimeArgs}}
 {{- range .RuntimeArgs}}
 {{- if eq .Type "positional"}}
-  "[[ .my.{{.Name | lower}} ]]" \
+  [[ var "{{.Name | lower}}" . | quote ]] \
 {{- else}}
-  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} [[ var "{{.Name | lower}}" . | quote ]] \
 {{- end}}
 {{- end}}
 {{- end}}
 {{- if .PackageArgs}}
 {{- range .PackageArgs}}
 {{- if eq .Type "positional"}}
-  "[[ .my.{{.Name | lower}} ]]" \
+  [[ var "{{.Name | lower}}" . | quote ]] \
 {{- else}}
-  {{.Name}} "[[ .my.{{.Name | lower}} ]]" \
+  {{.Name}} [[ var "{{.Name | lower}}" . | quote ]] \
 {{- end}}
 {{- end}}
 {{- end}}
@@ -85,8 +83,8 @@ EOF
       }
 
       resources {
-        cpu    = [[ .my.cpu ]]
-        memory = [[ .my.memory ]]
+        cpu    = [[ var "cpu" . ]]
+        memory = [[ var "memory" . ]]
       }
 
       {{- if .HasTransport}}

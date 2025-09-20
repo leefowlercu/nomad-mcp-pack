@@ -83,9 +83,10 @@ watch:
   poll_interval: 300
 
   # Filter by server names (default: empty = all servers)
+  # NOTE: Wildcards are NOT supported - use exact server names
   # Examples:
-  # - ["fastapi-mcp"] - only this specific server
-  # - ["fastapi*", "*sql*"] - wildcard patterns
+  # - ["io.github.containers/kubernetes-mcp-server"] - only this specific server
+  # - ["ai.waystation/gmail", "com.make/mcp-server"] - multiple specific servers
   filter_names: []
 
   # Filter by package types (default: all supported types)
@@ -127,8 +128,9 @@ watch:
 # watch:
 #   poll_interval: 600  # 10 minutes
 #   filter_names:
-#     - "anthropic/*"
-#     - "fastapi-mcp"
+#     - "io.github.containers/kubernetes-mcp-server"
+#     - "ai.waystation/gmail"
+#     - "com.make/mcp-server"
 #   filter_package_types: ["oci"]
 #   filter_transport_types: ["http", "sse"]
 #   max_concurrent: 10

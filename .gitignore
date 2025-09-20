@@ -42,3 +42,6 @@ watch.log
 
 # Executable
 nomad-mcp-pack
+
+# Config file
+config.yaml

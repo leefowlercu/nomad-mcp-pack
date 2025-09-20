@@ -20,6 +20,7 @@ var (
 	variablesTemplate *template.Template
 	outputsTemplate   *template.Template
 	readmeTemplate    *template.Template
+	helpersTemplate   *template.Template
 	jobTemplates      map[string]*template.Template
 )
 
@@ -51,6 +52,11 @@ func init() {
 	readmeTemplate, err = template.New("readme.md.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/readme.md.tmpl")
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse readme template; %v", err))
+	}
+
+	helpersTemplate, err = template.New("_helpers.tpl.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/_helpers.tpl.tmpl")
+	if err != nil {
+		panic(fmt.Sprintf("failed to parse helpers template; %v", err))
 	}
 
 	jobTemplates = make(map[string]*template.Template)
@@ -226,6 +232,15 @@ func renderReadmeTemplate(server *v0.ServerJSON, pkg *model.Package) (string, er
 	var buf bytes.Buffer
 	if err := readmeTemplate.Execute(&buf, data); err != nil {
 		return "", fmt.Errorf("failed to execute readme template; %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+func renderHelpersTemplate() (string, error) {
+	var buf bytes.Buffer
+	if err := helpersTemplate.Execute(&buf, nil); err != nil {
+		return "", fmt.Errorf("failed to execute helpers template; %w", err)
 	}
 
 	return buf.String(), nil

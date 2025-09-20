@@ -1,3 +1,15 @@
+variable "job_name" {
+  description = "The name to use for the Nomad job (defaults to the pack name)"
+  type        = string
+  default     = ""
+}
+
+variable "service_name" {
+  description = "The service name for the MCP server"
+  type        = string
+  default     = "mcp-server"
+}
+
 variable "datacenters" {
   description = "A list of datacenters in the region which are eligible for task placement"
   type        = list(string)
@@ -26,6 +38,18 @@ variable "memory" {
   description = "The amount of memory in MB to reserve for the MCP server task"
   type        = number
   default     = 256
+}
+
+variable "package_name" {
+  description = "The npm package name to install"
+  type        = string
+  default     = "{{.PackageID}}"
+}
+
+variable "package_version" {
+  description = "The npm package version to install"
+  type        = string
+  default     = "{{.PackageVersion}}"
 }
 {{if .HasEnvironment }}
 {{range .Environment}}

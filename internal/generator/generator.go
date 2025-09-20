@@ -159,6 +159,10 @@ func (g *Generator) generateFiles(ctx context.Context, generateDir string) error
 		return fmt.Errorf("failed to generate job template; %w", err)
 	}
 
+	if err := g.generateHelpers(ctx, generateDir); err != nil {
+		return fmt.Errorf("failed to generate helpers template; %w", err)
+	}
+
 	return nil
 }
 
@@ -208,6 +212,16 @@ func (g *Generator) generateJobTemplate(ctx context.Context, generateDir string)
 	return g.writeFile(ctx, generateDir, templatePath, content)
 }
 
+func (g *Generator) generateHelpers(ctx context.Context, generateDir string) error {
+	content, err := renderHelpersTemplate()
+	if err != nil {
+		return err
+	}
+
+	templatePath := filepath.Join("templates", "_helpers.tpl")
+	return g.writeFile(ctx, generateDir, templatePath, content)
+}
+
 func (g *Generator) writeFile(ctx context.Context, generateDir, relativePath, content string) error {
 	select {
 	case <-ctx.Done():
@@ -231,7 +245,8 @@ func (g *Generator) writeFile(ctx context.Context, generateDir, relativePath, co
 
 func computePackName(serverName, version, packageType, transportType string) string {
 	sanitized := sanitizeServerName(serverName)
-	return fmt.Sprintf("%s-%s-%s-%s", sanitized, version, packageType, transportType)
+	sanitizedVersion := strings.ReplaceAll(version, ".", "-")
+	return fmt.Sprintf("%s-%s-%s-%s", sanitized, sanitizedVersion, packageType, transportType)
 }
 
 func sanitizeServerName(name string) string {
