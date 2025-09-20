@@ -38,13 +38,16 @@ func (w *Watcher) Run(ctx context.Context) error {
 		"filter_transport_types", w.config.TransportFilter.Types,
 	)
 
+	// Start the polling timer
 	ticker := time.NewTicker(time.Duration(w.config.PollInterval) * time.Second)
 	defer ticker.Stop()
 
+	// Initial poll before entering the loop
 	if err := w.poll(ctx); err != nil {
 		slog.Error("initial poll failed", "error", err)
 	}
 
+	// Main polling loop, exits on context cancellation
 	for {
 		select {
 		case <-ctx.Done():
@@ -96,10 +99,14 @@ func (w *Watcher) poll(ctx context.Context) error {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
-	// Report generation errors, if any
-	if generateErr != nil {
-		output.Warning("Pack generation completed with errors: %v", generateErr)
-		slog.Error("pack generation completed with errors", "error", generateErr)
+	// If there were critical errors during generation, log, wrap, and return them
+	var packGenerationErrors *PackGenerationErrors
+	if errors.As(generateErr, &packGenerationErrors) {
+		for _, genErr := range packGenerationErrors.CriticalErrs {
+			slog.Error("pack generation failed", "error", genErr)
+		}
+
+		return fmt.Errorf("failure during poll cycle; %w", packGenerationErrors)
 	}
 
 	// Report summary of the poll cycle
@@ -165,8 +172,7 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 	for _, srv := range servers {
 		nameSpec, err := server.ParseNameSpec(srv.Name)
 		if err != nil {
-			output.Warning("Polled server %q has invalid server name format, skipping", srv.Name)
-			slog.Warn("invalid server name format found during watcher filtering", "name", srv.Name, "error", err)
+			slog.Warn("invalid server name format found during watcher filtering, skipping", "name", srv.Name, "error", err)
 			continue
 		}
 
@@ -261,35 +267,37 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 		}(task)
 	}
 
+	// Wait for all goroutines to finish and then close result collection channels
 	wg.Wait()
 	close(failureChan)
 	close(successChan)
 
-	var errs []error
+	// Store non-critical and critical (unexpected) errors separately for failure reporting
+	var nonCriticalErrs []error
 	var criticalErrs []error
-	var successCount int
 
 	for err := range failureChan {
-		errs = append(errs, err)
-		output.Failure("Pack generation failed: %v", err)
-		slog.Error("pack generation failed", "error", err)
-
-		if !errors.Is(err, generator.ErrPackDirectoryExists) &&
-			!errors.Is(err, generator.ErrPackArchiveExists) {
+		if errors.Is(err, generator.ErrPackDirectoryExists) ||
+			errors.Is(err, generator.ErrPackArchiveExists) {
+			nonCriticalErrs = append(nonCriticalErrs, err)
+		} else {
 			criticalErrs = append(criticalErrs, err)
 		}
 	}
 
+	// Count successful generations for reporting
+	var successCount int
 	for range successChan {
 		successCount++
 	}
 
+	// Determine if we return an error based on presence of critical errors
 	if len(criticalErrs) > 0 {
-		return successCount, fmt.Errorf("generation completed with %d critical errors", len(criticalErrs))
+		return successCount, &PackGenerationErrors{CriticalErrs: criticalErrs}
 	}
 
-	if len(errs) > 0 {
-		slog.Info("pack generation completed with errors", "total_errors", len(errs), "critical_errors", len(criticalErrs))
+	if len(nonCriticalErrs) > 0 {
+		slog.Warn("pack generation completed with noncritical errors", "errors", len(nonCriticalErrs))
 	}
 
 	return successCount, nil
@@ -298,7 +306,6 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) error {
 	serverName := task.Server.Name
 
-	output.Progress("Generating pack: %s@%s (%s, %s)", serverName, task.Server.Version, task.Package.RegistryType, task.Package.Transport.Type)
 	slog.Info("generating pack",
 		"server", serverName,
 		"version", task.Server.Version,
@@ -329,7 +336,6 @@ func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) err
 	}
 	w.state.SetServer(state)
 
-	output.Success("Pack generated: %s@%s (%s, %s)", serverName, task.Server.Version, task.Package.RegistryType, task.Package.Transport.Type)
 	slog.Info("pack generated successfully",
 		"server", serverName,
 		"version", task.Server.Version,

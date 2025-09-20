@@ -38,6 +38,11 @@ func Run(ctx context.Context, srv *v0.ServerJSON, pkg *model.Package, opts Optio
 
 	packName := computePackName(srv.Name, srv.Version, pkg.RegistryType, pkg.Transport.Type)
 
+	// Show progress for pack generation
+	if !opts.DryRun {
+		output.Progress("Generating pack: %s@%s (%s, %s)", srv.Name, srv.Version, pkg.RegistryType, pkg.Transport.Type)
+	}
+
 	generator := &Generator{
 		server:   srv,
 		pkg:      pkg,
@@ -45,7 +50,17 @@ func Run(ctx context.Context, srv *v0.ServerJSON, pkg *model.Package, opts Optio
 		options:  opts,
 	}
 
-	return generator.Generate(ctx)
+	err := generator.Generate(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Show success for pack generation
+	if !opts.DryRun {
+		output.Success("Pack generated: %s@%s (%s, %s)", srv.Name, srv.Version, pkg.RegistryType, pkg.Transport.Type)
+	}
+
+	return nil
 }
 
 func (g *Generator) Generate(ctx context.Context) error {
@@ -104,8 +119,6 @@ func (g *Generator) generatePackdir(ctx context.Context) error {
 		return err
 	}
 
-	output.Success("Pack directory created: %s", generateDir)
-
 	return nil
 }
 
@@ -139,10 +152,6 @@ func (g *Generator) generateArchive(ctx context.Context) error {
 	if err := g.createArchive(ctx, generateDir); err != nil {
 		return err
 	}
-
-	archivePath := filepath.Join(g.options.OutputDir, g.packName+".zip")
-
-	output.Success("Pack archive created: %s", archivePath)
 
 	return nil
 }

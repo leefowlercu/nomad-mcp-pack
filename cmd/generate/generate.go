@@ -164,8 +164,6 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not parse server argument; %w", err)
 	}
 
-	output.Info("Generating pack for %s...", serverSearchSpec)
-
 	serverSpec, err := server.Find(ctx, serverSearchSpec, client)
 	if err != nil {
 		return fmt.Errorf("could not retrieve server %q from registry; %w", serverSearchSpec, err)

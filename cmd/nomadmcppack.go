@@ -68,13 +68,11 @@ func Execute() error {
 			cmd = nomadMcpPackCmd
 		}
 
-		// Log to stderr
-		slog.Error("command execution failed", "error", err)
-
 		// Show user-friendly error message to stdout
 		fmt.Printf("Error: %v\n", err)
 		if !cmd.SilenceUsage {
 			fmt.Printf("\n")
+			cmd.SetOut(os.Stdout)
 			cmd.Usage()
 		}
 

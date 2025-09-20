@@ -44,15 +44,18 @@ func Info(format string, args ...any) {
 	}
 }
 
-// Warning outputs a warning message to stdout regardless of silent mode
-// Warnings are important enough to always show
+// Warning outputs a warning message to stdout if not in silent mode
 func Warning(format string, args ...any) {
-	fmt.Printf("Warning: "+format+"\n", args...)
+	if !isSilent() {
+		fmt.Printf("Warning: "+format+"\n", args...)
+	}
 }
 
-// Failure outputs a failure message with X mark to stdout regardless of silent mode
+// Failure outputs a failure message with X mark to stdout if not in silent mode
 func Failure(format string, args ...any) {
-	fmt.Printf("✗ "+format+"\n", args...)
+	if !isSilent() {
+		fmt.Printf("✗ "+format+"\n", args...)
+	}
 }
 
 // Progress outputs a progress message to stdout if not in silent mode
