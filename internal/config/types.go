@@ -53,6 +53,7 @@ type Config struct {
 	DryRun          bool           `mapstructure:"dry_run"`
 	ForceOverwrite  bool           `mapstructure:"force_overwrite"`
 	AllowDeprecated bool           `mapstructure:"allow_deprecated"`
+	Silent          bool           `mapstructure:"silent"`
 	Generate        GenerateConfig `mapstructure:"generate"`
 	Server          ServerConfig   `mapstructure:"server"`
 	Watch           WatchConfig    `mapstructure:"watch"`

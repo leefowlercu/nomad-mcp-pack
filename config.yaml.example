@@ -47,6 +47,10 @@ force_overwrite: false
 # Allow generation of packs for deprecated servers (default: false)
 allow_deprecated: false
 
+# Suppress user-facing output - errors still shown (default: false)
+# When enabled, only errors and warnings are displayed
+silent: false
+
 # =============================================================================
 # GENERATE COMMAND CONFIGURATION
 # =============================================================================
@@ -142,3 +146,9 @@ watch:
 # output_type: archive
 # allow_deprecated: false
 # dry_run: false
+# silent: true  # Suppress user output for CI/CD environments
+
+# Example 4: Silent development setup
+# silent: true  # Only show errors and warnings
+# env: dev
+# log_level: debug  # Debug logs still shown in stderr

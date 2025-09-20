@@ -13,6 +13,7 @@ import (
 	"github.com/leefowlercu/go-mcp-registry/mcp"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/generator"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/output"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/utils"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/validate"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/watcher"
@@ -219,9 +220,12 @@ func runWatch(cmd *cobra.Command, args []string) error {
 
 	go func() {
 		<-sigChan
+		output.Info("Received shutdown signal, stopping watch mode...")
 		slog.Info("received shutdown signal, stopping watch mode...")
 		cancel()
 	}()
+
+	output.Info("Starting watch mode (polling every %d seconds)...", pollInterval)
 
 	w, err := watcher.NewWatcher(client, watcherConfig, generateOpts)
 	if err != nil {
@@ -231,11 +235,13 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	err = w.Run(ctx)
 	if err != nil {
 		if errors.Is(err, watcher.ErrGracefulShutdown) {
+			output.Info("Watch mode stopped")
 			return nil
 		}
 		return err
 	}
 
+	output.Info("Watch mode completed")
 	slog.Info("watch command run completed successfully")
 
 	return nil

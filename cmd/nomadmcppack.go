@@ -35,6 +35,7 @@ func init() {
 	nomadMcpPackCmd.PersistentFlags().Bool("dry-run", config.DefaultConfig.DryRun, "Show what would be generated without writing files")
 	nomadMcpPackCmd.PersistentFlags().Bool("force-overwrite", config.DefaultConfig.ForceOverwrite, "Overwrite existing pack or archive if it exists")
 	nomadMcpPackCmd.PersistentFlags().Bool("allow-deprecated", config.DefaultConfig.AllowDeprecated, "Allow generation of packs for deprecated servers")
+	nomadMcpPackCmd.PersistentFlags().BoolP("silent", "s", config.DefaultConfig.Silent, "Suppress user-facing output (errors still shown)")
 
 	viper.BindPFlag("registry_url", nomadMcpPackCmd.PersistentFlags().Lookup("registry-url"))
 	viper.BindPFlag("output_dir", nomadMcpPackCmd.PersistentFlags().Lookup("output-dir"))
@@ -42,6 +43,7 @@ func init() {
 	viper.BindPFlag("dry_run", nomadMcpPackCmd.PersistentFlags().Lookup("dry-run"))
 	viper.BindPFlag("force_overwrite", nomadMcpPackCmd.PersistentFlags().Lookup("force-overwrite"))
 	viper.BindPFlag("allow_deprecated", nomadMcpPackCmd.PersistentFlags().Lookup("allow-deprecated"))
+	viper.BindPFlag("silent", nomadMcpPackCmd.PersistentFlags().Lookup("silent"))
 
 	nomadMcpPackCmd.AddCommand(cmdgenerate.GenerateCmd)
 	nomadMcpPackCmd.AddCommand(cmdserver.ServerCmd)
@@ -60,16 +62,22 @@ func Execute() error {
 	if err != nil {
 		cmd, _, _ := nomadMcpPackCmd.Find(os.Args[1:])
 
+		// Command will either be a leaf command or nil
+		// If nil the command was the root command itself
 		if cmd == nil {
 			cmd = nomadMcpPackCmd
 		}
 
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		// Log to stderr
+		slog.Error("command execution failed", "error", err)
 
+		// Show user-friendly error message to stdout
+		fmt.Printf("Error: %v\n", err)
 		if !cmd.SilenceUsage {
-			fmt.Fprintf(os.Stderr, "\n")
+			fmt.Printf("\n")
 			cmd.Usage()
 		}
+
 		return err
 	}
 

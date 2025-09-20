@@ -10,6 +10,7 @@ import (
 
 	"github.com/leefowlercu/go-mcp-registry/mcp"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/generator"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/output"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/server"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 )
@@ -62,6 +63,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 
 func (w *Watcher) poll(ctx context.Context) error {
 	startTime := time.Now()
+	output.Progress("Starting poll cycle...")
 	slog.Info("starting poll cycle", "start_time", startTime.Format(time.RFC3339))
 
 	servers, err := w.fetchServers(ctx)
@@ -69,16 +71,19 @@ func (w *Watcher) poll(ctx context.Context) error {
 		return fmt.Errorf("failed to fetch servers: %w", err)
 	}
 
+	output.Info("Fetched %d servers from registry", len(servers))
 	slog.Info("fetched servers from registry", "count", len(servers))
 
 	toGenerate := w.filterServers(servers)
 	if len(toGenerate) == 0 {
-		slog.Debug("no servers need generation")
+		output.Info("No packs need generation")
+		slog.Debug("no packs need generation")
 		w.state.UpdateLastPoll(startTime)
 		return w.state.SaveState(w.config.StateFilePath)
 	}
 
-	slog.Info("servers need generation", "count", len(toGenerate))
+	output.Info("%d packs need generation", len(toGenerate))
+	slog.Debug("packs need generation", "count", len(toGenerate))
 
 	// Generate packs with concurrency control
 	generateErr := w.generatePacks(ctx, toGenerate)
@@ -89,15 +94,14 @@ func (w *Watcher) poll(ctx context.Context) error {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
 
-	// Return generation error after saving state
+	// Report generation errors, if any
 	if generateErr != nil {
+		output.Warning("Pack generation completed with errors: %v", generateErr)
 		slog.Error("pack generation completed with errors", "error", generateErr)
 	}
 
-	slog.Info("poll cycle completed",
-		"duration", time.Since(startTime),
-		"generated", len(toGenerate),
-	)
+	output.Info("Poll cycle completed (%v, %d packs generated)", time.Since(startTime).Round(time.Second), len(toGenerate))
+	slog.Info("poll cycle completed", "duration", time.Since(startTime), "generated", len(toGenerate))
 
 	return nil
 }
@@ -200,8 +204,7 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 				continue
 			}
 
-			// Check if generation is needed based on state presence only
-			// TODO: Add more sophisticated checks (e.g., checksum, updated_at) if available
+			// Check if generation is needed based on state
 			if w.state.NeedsGeneration(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
 				pkgCopy := pkg // Copy to avoid reference issues
 				tasks = append(tasks, ServerGenerateTask{
@@ -259,6 +262,7 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 
 	for err := range errChan {
 		errs = append(errs, err)
+		output.Failure("Pack generation failed: %v", err)
 		slog.Error("pack generation failed", "error", err)
 
 		// Check if this is a critical error (not just "directory already exists")
@@ -285,6 +289,7 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTask) error {
 	serverName := task.Server.Name
 
+	output.Progress("Generating pack: %s@%s (%s, %s)", serverName, task.Server.Version, task.PackageType, task.TransportType)
 	slog.Info("generating pack",
 		"server", serverName,
 		"version", task.Server.Version,
@@ -297,7 +302,6 @@ func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTas
 	}
 
 	now := time.Now()
-	// Parse namespace and name from server.Name
 	nameSpec, err := server.ParseNameSpec(task.Server.Name)
 	if err != nil {
 		return fmt.Errorf("failed to parse server name: %w", err)
@@ -316,6 +320,7 @@ func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTas
 	}
 	w.state.SetServer(state)
 
+	output.Success("Pack generated: %s@%s (%s, %s)", serverName, task.Server.Version, task.PackageType, task.TransportType)
 	slog.Info("pack generated successfully",
 		"server", serverName,
 		"version", task.Server.Version,

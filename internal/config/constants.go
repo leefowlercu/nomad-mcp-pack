@@ -19,6 +19,7 @@ var DefaultConfig = struct {
 	DryRun                    bool
 	ForceOverwrite            bool
 	AllowDeprecated           bool
+	Silent                    bool
 	GeneratePackageType       string
 	GenerateTransportType     string
 	ServerAddr                string
@@ -40,6 +41,7 @@ var DefaultConfig = struct {
 	DryRun:                    false,
 	ForceOverwrite:            false,
 	AllowDeprecated:           false,
+	Silent:                    false,
 	GeneratePackageType:       "oci",
 	GenerateTransportType:     "http",
 	ServerAddr:                ":8080",

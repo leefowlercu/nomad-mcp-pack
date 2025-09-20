@@ -41,6 +41,17 @@ make install
 
 ## Usage
 
+### Global Flags
+
+All commands support these global flags:
+
+- `--silent, -s`: Suppress user-facing output (errors and warnings still shown)
+- `--output-dir`: Output directory for generated packs (default: `./packs`)
+- `--output-type`: Output type - `packdir` or `archive` (default: `packdir`)
+- `--dry-run`: Show what would be done without making changes
+- `--force-overwrite`: Overwrite existing pack directories/archives
+- `--allow-deprecated`: Allow generation of packs for deprecated servers
+
 ### Generate Command
 
 Generate a Nomad Pack for a specific MCP Server version:
@@ -63,6 +74,9 @@ nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
 
 # Force overwrite existing pack
 nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force-overwrite
+
+# Silent mode - suppress user-facing output (errors still shown)
+nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --silent
 ```
 
 ### Watch Command
@@ -87,6 +101,9 @@ nomad-mcp-pack watch --max-concurrent 10
 
 # Custom state file location
 nomad-mcp-pack watch --state-file ./my-watch-state.json
+
+# Silent mode for automated environments
+nomad-mcp-pack watch --silent --poll-interval 300
 ```
 
 ### Server Command

@@ -57,8 +57,8 @@ registry-update:
 
 clean:
 	@echo "Cleaning..."
-	@rm -f $(BINARY_NAME) watch.json watch.log
-	@rm -rf ./test-packs/
+	@rm -f $(BINARY_NAME) watch.json watch.log stdout.log stderr.log
+	@rm -rf ./test-packs/ ./packs/
 	@echo "Cleaned."
 
 rebuild: clean build

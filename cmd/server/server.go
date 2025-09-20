@@ -1,9 +1,11 @@
 package cmdserver
 
 import (
+	"fmt"
 	"log/slog"
 
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -36,6 +38,16 @@ func init() {
 
 func runServer(cmd *cobra.Command, args []string) error {
 	slog.Info("starting server command run")
+
+	cfg, err := config.GetConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load configuration: %w", err)
+	}
+
+	output.Info("Starting server on %s...", cfg.Server.Addr)
+
+	// TODO: Implement actual server functionality
+	output.Warning("Server command is not yet implemented")
 
 	slog.Info("server command run completed successfully")
 

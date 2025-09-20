@@ -35,11 +35,13 @@ go.work.sum
 CLAUDE.md
 AGENTS.md
 
-# Generated Files
+# Generated & Testing Files
 packs/
 test-packs/
 watch.json
 watch.log
+stdout.log
+stderr.log
 
 # Executable
 nomad-mcp-pack

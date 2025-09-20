@@ -21,6 +21,7 @@ func InitConfig() {
 	viper.SetDefault("dry_run", DefaultConfig.DryRun)
 	viper.SetDefault("force_overwrite", DefaultConfig.ForceOverwrite)
 	viper.SetDefault("allow_deprecated", DefaultConfig.AllowDeprecated)
+	viper.SetDefault("silent", DefaultConfig.Silent)
 	viper.SetDefault("generate.package_type", DefaultConfig.GeneratePackageType)
 	viper.SetDefault("generate.transport_type", DefaultConfig.GenerateTransportType)
 	viper.SetDefault("server.addr", DefaultConfig.ServerAddr)

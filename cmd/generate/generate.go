@@ -8,6 +8,7 @@ import (
 	"github.com/leefowlercu/go-mcp-registry/mcp"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/config"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/generator"
+	"github.com/leefowlercu/nomad-mcp-pack/internal/output"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/server"
 	"github.com/leefowlercu/nomad-mcp-pack/internal/validate"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
@@ -163,6 +164,8 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("could not parse server argument; %w", err)
 	}
 
+	output.Info("Generating pack for %s...", serverSearchSpec)
+
 	serverSpec, err := server.Find(ctx, serverSearchSpec, client)
 	if err != nil {
 		return fmt.Errorf("could not retrieve server %q from registry; %w", serverSearchSpec, err)
@@ -175,6 +178,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("server %q, version %s is deprecated (use --allow-deprecated to generate anyway)", serverSpec.Name(), serverSpec.Version())
 	}
 	if serverSpec.IsDeprecated() && allowDeprecated {
+		output.Warning("Server %s@%s is deprecated", serverSpec.Name(), serverSpec.Version())
 		slog.Warn("generating pack for deprecated server", "server", serverSpec.Name(), "version", serverSpec.Version())
 	}
 
@@ -196,6 +200,7 @@ func runGenerate(cmd *cobra.Command, args []string) error {
 
 	err = generator.Run(ctx, srv, pkg, opts)
 	if err != nil {
+		output.Failure("Pack generation failed: %v", err)
 		return fmt.Errorf("failed to generate pack; %w", err)
 	}
 

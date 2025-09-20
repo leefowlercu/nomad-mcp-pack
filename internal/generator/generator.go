@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/leefowlercu/nomad-mcp-pack/internal/output"
 	v0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
 	"github.com/modelcontextprotocol/registry/pkg/model"
 )
@@ -68,10 +69,10 @@ func (g *Generator) dryRunGenerate(ctx context.Context) error {
 
 	if g.options.OutputType == "archive" {
 		archivePath := filepath.Join(g.options.OutputDir, g.packName+".zip")
-		fmt.Printf("Would create pack archive: %s\n", archivePath)
+		output.Info("Would create pack archive: %s", archivePath)
 	} else {
 		packDir := filepath.Join(g.options.OutputDir, g.packName)
-		fmt.Printf("Would create pack directory: %s\n", packDir)
+		output.Info("Would create pack directory: %s", packDir)
 	}
 
 	return nil
@@ -99,7 +100,13 @@ func (g *Generator) generatePackdir(ctx context.Context) error {
 		return fmt.Errorf("failed to create templates directory: %w", err)
 	}
 
-	return g.generateFiles(ctx, generateDir)
+	if err := g.generateFiles(ctx, generateDir); err != nil {
+		return err
+	}
+
+	output.Success("Pack directory created: %s", generateDir)
+
+	return nil
 }
 
 func (g *Generator) generateArchive(ctx context.Context) error {
@@ -129,7 +136,15 @@ func (g *Generator) generateArchive(ctx context.Context) error {
 		return err
 	}
 
-	return g.createArchive(ctx, generateDir)
+	if err := g.createArchive(ctx, generateDir); err != nil {
+		return err
+	}
+
+	archivePath := filepath.Join(g.options.OutputDir, g.packName+".zip")
+
+	output.Success("Pack archive created: %s", archivePath)
+
+	return nil
 }
 
 func (g *Generator) generateFiles(ctx context.Context, generateDir string) error {
