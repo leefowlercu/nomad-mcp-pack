@@ -202,7 +202,7 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 
 			// Check if generation is needed based on state presence only
 			// TODO: Add more sophisticated checks (e.g., checksum, updated_at) if available
-			if w.state.NeedsGenerationWithTransport(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
+			if w.state.NeedsGeneration(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
 				pkgCopy := pkg // Copy to avoid reference issues
 				tasks = append(tasks, ServerGenerateTask{
 					Server:        srv,

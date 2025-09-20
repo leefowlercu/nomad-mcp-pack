@@ -94,36 +94,20 @@ func (s *WatchState) SetServer(server *ServerState) {
 	s.Servers[server.Key()] = server
 }
 
-func (s *WatchState) NeedsGeneration(namespace, name, version, packageType string, updatedAt time.Time) bool {
-	key := fmt.Sprintf("%s/%s@%s:%s", namespace, name, version, packageType)
-
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	existing, exists := s.Servers[key]
-	if !exists {
-		return true
-	}
-
-	return updatedAt.After(existing.GeneratedAt)
-}
-
-func (s *WatchState) NeedsGenerationWithTransport(namespace, name, version, packageType, transportType string, updatedAt time.Time) bool {
+// TODO: Update logic to use some form of checksum or hash of the actual Pack data
+func (s *WatchState) NeedsGeneration(namespace, name, version, packageType, transportType string, updatedAt time.Time) bool {
 	key := fmt.Sprintf("%s/%s@%s:%s:%s", namespace, name, version, packageType, transportType)
 
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	// Check for existence of key
 	existing, exists := s.Servers[key]
 	if !exists {
 		return true
 	}
 
-	// If updatedAt is zero time, we only check for existence (already generated)
-	if updatedAt.IsZero() {
-		return false
-	}
-
+	// If server exists, but has a newer UpdatedAt, we need to regenerate
 	return updatedAt.After(existing.GeneratedAt)
 }
 

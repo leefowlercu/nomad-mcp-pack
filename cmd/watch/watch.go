@@ -94,14 +94,14 @@ func runValidate(cmd *cobra.Command, args []string) error {
 		),
 	)
 
-	filterNames := cfg.Watch.FilterServerNames
+	filterServerNames := cfg.Watch.FilterServerNames
 	filterPackageTypes := cfg.Watch.FilterPackageTypes
 	filterTransportTypes := cfg.Watch.FilterTransportTypes
 	pollInterval := cfg.Watch.PollInterval
 	stateFile := cfg.Watch.StateFile
 	maxConcurrent := cfg.Watch.MaxConcurrent
 
-	if err := validate.ServerNames(filterNames); err != nil {
+	if err := validate.ServerNames(filterServerNames); err != nil {
 		return fmt.Errorf("could not validate names filter; %w", err)
 	}
 
@@ -210,14 +210,10 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		},
 	}
 
-	w, err := watcher.NewWatcher(client, watcherConfig, generateOpts)
-	if err != nil {
-		return fmt.Errorf("failed to create watcher: %w", err)
-	}
-
-	ctx, cancel := context.WithCancel(cmd.Context())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	// Handle graceful shutdown on SIGINT/SIGTERM
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
@@ -227,6 +223,11 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		cancel()
 	}()
 
+	w, err := watcher.NewWatcher(client, watcherConfig, generateOpts)
+	if err != nil {
+		return fmt.Errorf("failed to create watcher: %w", err)
+	}
+
 	err = w.Run(ctx)
 	if err != nil {
 		if errors.Is(err, watcher.ErrGracefulShutdown) {
@@ -234,5 +235,8 @@ func runWatch(cmd *cobra.Command, args []string) error {
 		}
 		return err
 	}
+
+	slog.Info("watch command run completed successfully")
+
 	return nil
 }

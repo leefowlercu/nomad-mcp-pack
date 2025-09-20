@@ -29,6 +29,9 @@ job [[ template "job_name" . ]] {
 
       config {
         image = "node:18-alpine"
+        {{- if or (eq .Transport.Type "streamable-http") (eq .Transport.Type "sse")}}
+        ports = ["http"]
+        {{- end}}
         command = "sh"
         args = [
           "-c",

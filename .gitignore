@@ -36,6 +36,7 @@ CLAUDE.md
 AGENTS.md
 
 # Generated Files
+packs/
 test-packs/
 watch.json
 watch.log
