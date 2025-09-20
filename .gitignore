@@ -44,5 +44,6 @@ stderr.log
 # Executable
 nomad-mcp-pack
 
-# Config file
+# Config files
 config.yaml
+nomad-dev.hcl

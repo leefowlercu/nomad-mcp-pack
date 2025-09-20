@@ -11,17 +11,6 @@ job [[ template "job_name" . ]] {
       port "http" {}
     }
 
-    service {
-      name = [[ var "service_name" . | quote ]]
-      port = "http"
-
-      check {
-        type     = "http"
-        path     = "/health"
-        interval = "10s"
-        timeout  = "2s"
-      }
-    }
     {{- end}}
 
     task "mcp-server" {
