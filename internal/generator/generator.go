@@ -88,7 +88,7 @@ func (g *Generator) generatePackdir(ctx context.Context) error {
 	generateDir := filepath.Join(g.options.OutputDir, g.packName)
 
 	if _, err := os.Stat(generateDir); err == nil && !g.options.ForceOverwrite {
-		return fmt.Errorf("pack directory %s already exists", generateDir)
+		return fmt.Errorf("pack directory %s already exists: %w", generateDir, ErrPackDirectoryExists)
 	}
 
 	if err := os.MkdirAll(generateDir, 0755); err != nil {

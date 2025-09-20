@@ -37,9 +37,7 @@ AGENTS.md
 
 # Generated & Testing Files
 packs/
-test-packs/
 watch.json
-watch.log
 stdout.log
 stderr.log
 

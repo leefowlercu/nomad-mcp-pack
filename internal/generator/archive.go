@@ -20,7 +20,11 @@ func (g *Generator) createArchive(ctx context.Context, generateDir string) error
 	archivePath := filepath.Join(g.options.OutputDir, g.packName+".zip")
 
 	if _, err := os.Stat(archivePath); err == nil && !g.options.ForceOverwrite {
-		return fmt.Errorf("pack archive %s already exists", archivePath)
+		return fmt.Errorf("pack archive %s already exists: %w", archivePath, ErrPackArchiveExists)
+	}
+
+	if err := os.MkdirAll(g.options.OutputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	archiveFile, err := os.Create(archivePath)

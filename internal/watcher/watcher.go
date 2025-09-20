@@ -2,9 +2,9 @@ package watcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
 	"sync"
 	"time"
 
@@ -86,7 +86,7 @@ func (w *Watcher) poll(ctx context.Context) error {
 	slog.Debug("packs need generation", "count", len(toGenerate))
 
 	// Generate packs with concurrency control
-	generateErr := w.generatePacks(ctx, toGenerate)
+	successCount, generateErr := w.generatePacks(ctx, toGenerate)
 
 	// Always update and save state, even if some generations failed
 	w.state.UpdateLastPoll(startTime)
@@ -100,8 +100,12 @@ func (w *Watcher) poll(ctx context.Context) error {
 		slog.Error("pack generation completed with errors", "error", generateErr)
 	}
 
-	output.Info("Poll cycle completed (%v, %d packs generated)", time.Since(startTime).Round(time.Second), len(toGenerate))
-	slog.Info("poll cycle completed", "duration", time.Since(startTime), "generated", len(toGenerate))
+	if generateErr != nil {
+		output.Info("Poll cycle completed (%v, %d succeeded, %d failed)", time.Since(startTime).Round(time.Second), successCount, len(toGenerate)-successCount)
+	} else {
+		output.Info("Poll cycle completed (%v, %d packs generated)", time.Since(startTime).Round(time.Second), successCount)
+	}
+	slog.Info("poll cycle completed", "duration", time.Since(startTime), "generated", successCount, "total_attempted", len(toGenerate))
 
 	return nil
 }
@@ -226,13 +230,13 @@ func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
 	return tasks
 }
 
-func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask) error {
+func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask) (int, error) {
 	sem := make(chan struct{}, w.config.MaxConcurrent)
 
 	var wg sync.WaitGroup
 
-	// Channel for errors
-	errChan := make(chan error, len(tasks))
+	failureChan := make(chan error, len(tasks))
+	successChan := make(chan string, len(tasks))
 
 	for _, task := range tasks {
 		wg.Add(1)
@@ -248,42 +252,48 @@ func (w *Watcher) generatePacks(ctx context.Context, tasks []ServerGenerateTask)
 			}
 
 			if err := w.generateSinglePack(ctx, t); err != nil {
-				errChan <- fmt.Errorf("failed to generate %s@%s:%s: %w",
-					t.Server.Name, t.Server.Version, t.PackageType, err)
+				failureChan <- fmt.Errorf("failed to generate %s@%s:%s:%s; %w",
+					t.Server.Name, t.Server.Version, t.PackageType, t.TransportType, err)
+			} else {
+				successChan <- fmt.Sprintf("%s@%s:%s:%s", t.Server.Name, t.Server.Version, t.PackageType, t.TransportType)
 			}
 		}(task)
 	}
 
 	wg.Wait()
-	close(errChan)
+	close(failureChan)
+	close(successChan)
 
 	var errs []error
 	var criticalErrs []error
+	var successCount int
 
-	for err := range errChan {
+	for err := range failureChan {
 		errs = append(errs, err)
 		output.Failure("Pack generation failed: %v", err)
 		slog.Error("pack generation failed", "error", err)
 
-		// Check if this is a critical error (not just "directory already exists")
-		if !strings.Contains(err.Error(), "already exists") {
+		if !errors.Is(err, generator.ErrPackDirectoryExists) &&
+			!errors.Is(err, generator.ErrPackArchiveExists) {
 			criticalErrs = append(criticalErrs, err)
 		}
 	}
 
-	// Only return error for critical failures, not "already exists" errors
-	if len(criticalErrs) > 0 {
-		return fmt.Errorf("generation completed with %d critical errors", len(criticalErrs))
+	for range successChan {
+		successCount++
 	}
 
-	// Log summary of all errors (including non-critical)
+	if len(criticalErrs) > 0 {
+		return successCount, fmt.Errorf("generation completed with %d critical errors", len(criticalErrs))
+	}
+
 	if len(errs) > 0 {
-		slog.Info("pack generation completed with non-critical errors",
+		slog.Info("pack generation completed with errors",
 			"total_errors", len(errs),
 			"critical_errors", len(criticalErrs))
 	}
 
-	return nil
+	return successCount, nil
 }
 
 func (w *Watcher) generateSinglePack(ctx context.Context, task ServerGenerateTask) error {
