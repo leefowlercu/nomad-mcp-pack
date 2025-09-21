@@ -24,7 +24,21 @@ job [[ template "job_name" . ]] {
         command = "sh"
         args = [
           "-c",
-          "npm install -g [[ var "package_name" . ]]@[[ var "package_version" . ]] && [[ var "package_name" . ]]{{- if .RuntimeArgs}} {{range .RuntimeArgs}}{{if eq .Type "positional"}} [[ var "{{.Name | lower}}" . ]]{{else}} {{.Name}} [[ var "{{.Name | lower}}" . ]]{{end}}{{end}}{{end}}{{- if .PackageArgs}} {{range .PackageArgs}}{{if eq .Type "positional"}} [[ var "{{.Name | lower}}" . ]]{{else}} {{.Name}} [[ var "{{.Name | lower}}" . ]]{{end}}{{end}}{{end}}"
+          "{{- if .NPMExecution -}}
+            {{- if eq .NPMExecution.Pattern `node-direct` -}}
+            npm install [[ var `package_name` . ]]@[[ var `package_version` . ]] && node node_modules/[[ var `package_name` . ]]/{{.NPMExecution.ScriptPath}}
+            {{- else if eq .NPMExecution.Pattern `global-bin` -}}
+            npm install -g [[ var `package_name` . ]]@[[ var `package_version` . ]] && {{.NPMExecution.BinCommand}}
+            {{- else -}}
+            npx [[ var `package_name` . ]]@[[ var `package_version` . ]]
+            {{- end}}
+          {{- else -}}
+            {{/* Fallback if NPMExecution is nil */}}
+            npm install -g [[ var `package_name` . ]]@[[ var `package_version` . ]] && [[ var `package_name` . ]]
+          {{- end}}
+          {{- /* Add runtime and named arguments only */ -}}
+          {{- range .RuntimeArgs}}{{if eq .Type `named`}} {{.Name}} [[ var `{{.Name | lower}}` . ]]{{end}}{{end}}
+          {{- range .PackageArgs}}{{if eq .Type `named`}} {{.Name}} [[ var `{{.Name | lower}}` . ]]{{end}}{{end}}"
         ]
       }
 

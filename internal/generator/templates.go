@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"fmt"
+	"log/slog"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -28,10 +29,11 @@ func init() {
 	var err error
 
 	funcMap := template.FuncMap{
-		"lower":   strings.ToLower,
-		"upper":   strings.ToUpper,
-		"replace": strings.ReplaceAll,
-		"base":    filepath.Base,
+		"lower":     strings.ToLower,
+		"upper":     strings.ToUpper,
+		"replace":   strings.ReplaceAll,
+		"base":      filepath.Base,
+		"hasSuffix": strings.HasSuffix,
 	}
 
 	metadataTemplate, err = template.New("metadata.hcl.tmpl").Funcs(funcMap).ParseFS(templateFS, "templates/metadata.hcl.tmpl")
@@ -105,6 +107,7 @@ type JobData struct {
 	PackageArgs    []model.Argument
 	Transport      model.Transport
 	HasTransport   bool
+	NPMExecution   *NPMExecutionData // Add NPM execution pattern info
 }
 
 type ReadmeData struct {
@@ -142,17 +145,24 @@ func renderMetadataTemplate(server *v0.ServerJSON, pkg *model.Package) (string, 
 }
 
 func renderVariablesTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error) {
+	// Only include named arguments as variables (positional args don't have names)
+	var validArgs []model.Argument
+	for _, arg := range append(pkg.RuntimeArguments, pkg.PackageArguments...) {
+		if arg.Type == "named" && arg.Name != "" {
+			validArgs = append(validArgs, arg)
+		}
+	}
+
 	data := VariablesData{
 		ServerName:     server.Name,
 		PackageType:    pkg.RegistryType,
 		HasEnvironment: len(pkg.EnvironmentVariables) > 0,
 		Environment:    pkg.EnvironmentVariables,
-		HasArguments:   len(pkg.RuntimeArguments) > 0 || len(pkg.PackageArguments) > 0,
+		HasArguments:   len(validArgs) > 0,
+		Arguments:      validArgs,
 		PackageID:      pkg.Identifier,
 		PackageVersion: pkg.Version,
 	}
-
-	data.Arguments = append(pkg.RuntimeArguments, pkg.PackageArguments...)
 
 	var buf bytes.Buffer
 	if err := variablesTemplate.Execute(&buf, data); err != nil {
@@ -182,6 +192,17 @@ func renderJobTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error
 		}
 	}
 
+	// For NPM packages, resolve execution pattern
+	var npmExecution *NPMExecutionData
+	if pkg.RegistryType == "npm" {
+		npmData, err := resolveNPMExecutionPattern(pkg)
+		if err != nil {
+			// Log warning but continue with defaults
+			slog.Warn("failed to resolve NPM execution pattern", "error", err, "package", pkg.Identifier)
+		}
+		npmExecution = npmData
+	}
+
 	data := JobData{
 		ServerName:     server.Name,
 		TaskName:       sanitizeServerName(server.Name),
@@ -195,6 +216,7 @@ func renderJobTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error
 		PackageArgs:    pkg.PackageArguments,
 		Transport:      pkg.Transport,
 		HasTransport:   pkg.Transport.Type != "",
+		NPMExecution:   npmExecution,
 	}
 
 	var buf bytes.Buffer
