@@ -88,30 +88,48 @@ func Find(ctx context.Context, searchSpec *SearchSpec, client *mcp.Client) (*Spe
 		return nil, errors.New("mcp client must not be nil")
 	}
 
-	var srv *v0.ServerJSON
-	var err error
+	// Use List() to get ServerResponse with metadata including Status
+	opts := &mcp.ServerListOptions{
+		Search: searchSpec.FullName(),
+	}
 
 	if searchSpec.IsLatest() {
-		slog.Info("resolving latest version", "server", searchSpec.FullName())
-		srv, err = client.Servers.GetByNameLatest(ctx, searchSpec.FullName())
+		// When using @latest, pass "latest" to get only the latest version
+		opts.Version = "latest"
 	} else {
-		srv, err = client.Servers.GetByNameExactVersion(ctx, searchSpec.FullName(), searchSpec.VersionSpec)
+		opts.Version = searchSpec.VersionSpec
 	}
+
+	listResp, _, err := client.Servers.List(ctx, opts)
 	if err != nil {
 		return nil, fmt.Errorf("failure reading from registry; %w", err)
 	}
 
-	if srv == nil {
+	if listResp == nil || len(listResp.Servers) == 0 {
+		return nil, fmt.Errorf("no server %q found with version %q", searchSpec.FullName(), searchSpec.VersionSpec)
+	}
+
+	// Find exact match for the server name
+	var matchedServer *v0.ServerResponse
+	for i := range listResp.Servers {
+		if listResp.Servers[i].Server.Name == searchSpec.FullName() {
+			matchedServer = &listResp.Servers[i]
+			break
+		}
+	}
+
+	if matchedServer == nil {
 		return nil, fmt.Errorf("no server %q found with version %q", searchSpec.FullName(), searchSpec.VersionSpec)
 	}
 
 	if searchSpec.IsLatest() {
-		slog.Info("resolved latest version", "server", srv.Name, "version", srv.Version)
+		slog.Info("resolved latest version", "server", matchedServer.Server.Name, "version", matchedServer.Server.Version)
 	}
 
 	return &Spec{
 		SearchSpec: searchSpec,
-		JSON:       srv,
+		JSON:       &matchedServer.Server,
+		Response:   matchedServer,
 	}, nil
 }
 

@@ -2,6 +2,7 @@ package server
 
 import (
 	registryv0 "github.com/modelcontextprotocol/registry/pkg/api/v0"
+	"github.com/modelcontextprotocol/registry/pkg/model"
 )
 
 type NameSpec struct {
@@ -16,7 +17,8 @@ type SearchSpec struct {
 
 type Spec struct {
 	*SearchSpec
-	JSON *registryv0.ServerJSON
+	JSON     *registryv0.ServerJSON
+	Response *registryv0.ServerResponse // Contains metadata including Status
 }
 
 func (n *NameSpec) String() string {
@@ -44,15 +46,15 @@ func (s *Spec) IsLatest() bool {
 }
 
 func (s *Spec) IsActive() bool {
-	return s.JSON.Status == "active"
+	return s.getStatus() == model.StatusActive
 }
 
 func (s *Spec) IsDeprecated() bool {
-	return s.JSON.Status == "deprecated"
+	return s.getStatus() == model.StatusDeprecated
 }
 
 func (s *Spec) IsDeleted() bool {
-	return s.JSON.Status == "deleted"
+	return s.getStatus() == model.StatusDeleted
 }
 
 func (s *Spec) Name() string {
@@ -61,4 +63,14 @@ func (s *Spec) Name() string {
 
 func (s *Spec) Version() string {
 	return s.JSON.Version
+}
+
+// getStatus extracts status from ServerResponse metadata.
+// If ServerResponse is not available, defaults to StatusActive.
+func (s *Spec) getStatus() model.Status {
+	if s.Response != nil && s.Response.Meta.Official != nil {
+		return s.Response.Meta.Official.Status
+	}
+	// Default to active if no metadata is available
+	return model.StatusActive
 }

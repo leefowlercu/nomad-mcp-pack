@@ -120,7 +120,7 @@ func (w *Watcher) poll(ctx context.Context) error {
 	return nil
 }
 
-func (w *Watcher) fetchServers(ctx context.Context) ([]v0.ServerJSON, error) {
+func (w *Watcher) fetchServers(ctx context.Context) ([]v0.ServerResponse, error) {
 	// Fetch by name if name filter provided
 	if len(w.config.NameFilter.Names) > 0 {
 		return w.fetchServersByName(ctx)
@@ -128,16 +128,11 @@ func (w *Watcher) fetchServers(ctx context.Context) ([]v0.ServerJSON, error) {
 
 	// Fetch all servers if no name filter provided
 	opts := &mcp.ServerListOptions{}
-	allServers, err := w.client.Servers.ListAll(ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-
-	return allServers, nil
+	return w.listAllServers(ctx, opts)
 }
 
-func (w *Watcher) fetchServersByName(ctx context.Context) ([]v0.ServerJSON, error) {
-	var allServers []v0.ServerJSON
+func (w *Watcher) fetchServersByName(ctx context.Context) ([]v0.ServerResponse, error) {
+	var allServers []v0.ServerResponse
 
 	// Track seen servers to manage deduplication
 	seenServers := make(map[string]bool)
@@ -146,16 +141,21 @@ func (w *Watcher) fetchServersByName(ctx context.Context) ([]v0.ServerJSON, erro
 	for _, nameFilter := range w.config.NameFilter.Names {
 		slog.Debug("fetching servers by name", "name", nameFilter)
 
-		servers, err := w.client.Servers.GetByName(ctx, nameFilter)
+		opts := &mcp.ServerListOptions{
+			Search: nameFilter,
+		}
+
+		servers, err := w.listAllServers(ctx, opts)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get servers by name %s: %w", nameFilter, err)
 		}
 
 		// Deduplicate server entries in case user provided duplicate name filters
-		for _, server := range servers {
+		for _, serverResp := range servers {
+			server := serverResp.Server
 			serverKey := fmt.Sprintf("%s@%s", server.Name, server.Version)
 			if !seenServers[serverKey] {
-				allServers = append(allServers, server)
+				allServers = append(allServers, serverResp)
 				seenServers[serverKey] = true
 			}
 		}
@@ -166,10 +166,42 @@ func (w *Watcher) fetchServersByName(ctx context.Context) ([]v0.ServerJSON, erro
 	return allServers, nil
 }
 
-func (w *Watcher) filterServers(servers []v0.ServerJSON) []ServerGenerateTask {
+// listAllServers fetches all servers using pagination, returning ServerResponse objects
+func (w *Watcher) listAllServers(ctx context.Context, opts *mcp.ServerListOptions) ([]v0.ServerResponse, error) {
+	var allServers []v0.ServerResponse
+
+	for {
+		listResp, resp, err := w.client.Servers.List(ctx, opts)
+		if err != nil {
+			return nil, err
+		}
+
+		if listResp != nil {
+			allServers = append(allServers, listResp.Servers...)
+		}
+
+		// Check if there are more pages
+		if resp == nil || resp.NextCursor == "" {
+			break
+		}
+
+		// Set up for next page
+		if opts.ListOptions.Cursor == "" {
+			opts.ListOptions.Cursor = resp.NextCursor
+		} else {
+			opts.Cursor = resp.NextCursor
+		}
+	}
+
+	return allServers, nil
+}
+
+func (w *Watcher) filterServers(servers []v0.ServerResponse) []ServerGenerateTask {
 	var tasks []ServerGenerateTask
 
-	for _, srv := range servers {
+	for _, serverResp := range servers {
+		srv := serverResp.Server
+
 		nameSpec, err := server.ParseNameSpec(srv.Name)
 		if err != nil {
 			slog.Warn("invalid server name format found during watcher filtering, skipping", "name", srv.Name, "error", err)

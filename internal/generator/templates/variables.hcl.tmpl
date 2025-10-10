@@ -55,9 +55,6 @@ variable "package_version" {
 {{range .Environment}}
 variable "{{.Name | lower}}" {
   description = "{{.Description}}"
-  {{- if .IsSecret}}
-  sensitive   = true
-  {{- end}}
   type        = string
   {{- if .Default}}
   default     = "{{.Default}}"

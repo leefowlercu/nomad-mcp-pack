@@ -110,7 +110,8 @@ func resolveNPMExecutionPattern(pkg *model.Package) (*NPMExecutionData, error) {
 		for _, arg := range pkg.PackageArguments {
 			if arg.Type == "positional" && arg.Value != "" {
 				if strings.HasSuffix(arg.Value, ".js") || strings.HasSuffix(arg.Value, ".mjs") {
-					data.ScriptPath = arg.Value
+					// Normalize the path by removing leading "./"
+					data.ScriptPath = strings.TrimPrefix(arg.Value, "./")
 					break
 				}
 			}
@@ -118,7 +119,8 @@ func resolveNPMExecutionPattern(pkg *model.Package) (*NPMExecutionData, error) {
 
 		// Fallback to main field if no positional argument
 		if data.ScriptPath == "" && npmInfo.Main != "" {
-			data.ScriptPath = npmInfo.Main
+			// Normalize the path by removing leading "./"
+			data.ScriptPath = strings.TrimPrefix(npmInfo.Main, "./")
 		}
 
 		// If still no script path, default to index.js
@@ -134,7 +136,8 @@ func resolveNPMExecutionPattern(pkg *model.Package) (*NPMExecutionData, error) {
 			if arg.Type == "positional" && arg.Value != "" {
 				if strings.HasSuffix(arg.Value, ".js") || strings.HasSuffix(arg.Value, ".mjs") {
 					data.Pattern = ExecutionPatternNodeDirect
-					data.ScriptPath = arg.Value
+					// Normalize the path by removing leading "./"
+					data.ScriptPath = strings.TrimPrefix(arg.Value, "./")
 					hasJSPositional = true
 					break
 				}
