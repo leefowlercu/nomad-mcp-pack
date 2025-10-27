@@ -41,6 +41,13 @@ watch.json
 stdout.log
 stderr.log
 
+# Demo artifacts
+demo/generate/packs/
+demo/generate/*.zip
+demo/watch/packs/
+demo/watch/*.json
+demo/watch/*.zip
+
 # Executable
 nomad-mcp-pack
 

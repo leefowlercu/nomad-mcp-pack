@@ -242,6 +242,62 @@ nomad-mcp-pack watch \
   --max-concurrent 5
 ```
 
+## Demos
+
+The project includes comprehensive interactive demonstration scripts for both the `generate` and `watch` commands. These demos are ideal for presentations, training sessions, and understanding tool capabilities.
+
+### Available Demos
+
+#### [Generate Command Demo](./demo/generate/)
+
+Demonstrates one-time pack generation for specific MCP servers.
+
+```bash
+cd demo/generate
+./demo.sh         # Interactive mode
+./demo.sh auto    # Automatic mode
+```
+
+**Features showcased:**
+- Version resolution with @latest syntax
+- Specific version targeting
+- Package and transport type selection
+- Output formats (directory/archive)
+- Dry-run mode
+- Force overwrite handling
+- Error handling and validation
+
+[View Generate Demo Documentation →](./demo/generate/README.md)
+
+#### [Watch Command Demo](./demo/watch/)
+
+Demonstrates continuous monitoring and automatic pack generation.
+
+```bash
+cd demo/watch
+./demo.sh         # Interactive mode
+./demo.sh auto    # Automatic mode
+```
+
+**Features showcased:**
+- Continuous polling with configurable intervals
+- State file persistence
+- Server name filtering
+- Package and transport type filtering
+- Concurrent generation control
+- Graceful shutdown handling
+- Background process management
+
+[View Watch Demo Documentation →](./demo/watch/README.md)
+
+### Prerequisites
+
+- nomad-mcp-pack installed (`make install` from project root)
+- Internet connection to access the MCP Registry
+- Optional: `tree` (generate demo) and `jq` (watch demo) for enhanced output
+
+See the [Demo README](./demo/README.md) for complete documentation, customization options, and troubleshooting.
+
 ## Help & Support
 
 - Run `nomad-mcp-pack --help` for command-line help

@@ -247,8 +247,8 @@ func (w *Watcher) filterServers(servers []v0.ServerResponse) []ServerGenerateTas
 				continue
 			}
 
-			// Check if generation is needed based on state
-			if w.state.NeedsGeneration(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
+			// Check if generation is needed based on state (or if force-overwrite is enabled)
+			if w.generateOpts.ForceOverwrite || w.state.NeedsGeneration(namespace, name, srv.Version, pkg.RegistryType, pkg.Transport.Type, time.Time{}) {
 				pkgCopy := pkg
 				tasks = append(tasks, ServerGenerateTask{
 					Server:  srv,
