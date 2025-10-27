@@ -34,11 +34,11 @@ print_step() {
 }
 
 print_info() {
-    echo -e "${CYAN}ℹ  $1${NC}"
+    echo -e "${CYAN}ℹ $1${NC}"
 }
 
 print_warning() {
-    echo -e "${YELLOW}⚠  $1${NC}"
+    echo -e "${YELLOW}⚠ $1${NC}"
 }
 
 print_error() {

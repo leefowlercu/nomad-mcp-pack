@@ -6,14 +6,16 @@ This demo showcases the complete end-to-end workflow of generating a Nomad Pack 
 
 The integration demo demonstrates:
 
-1. **Pack Generation**: Generating a Nomad Pack from the MCP Registry
-2. **Deployment Planning**: Using nomad-pack to preview deployment
-3. **Live Deployment**: Deploying the MCP server to a Nomad cluster
-4. **Job Verification**: Checking job status and health
-5. **Allocation Inspection**: Examining allocation details and resource usage
-6. **Network Configuration**: Viewing HTTP port allocation for HTTP-based MCP servers
-7. **Log Analysis**: Inspecting server logs for troubleshooting
-8. **Cleanup**: Gracefully stopping and removing deployments
+1. **Prerequisites Check**: Validating environment and connectivity
+2. **Pack Generation**: Creating Nomad Pack from MCP Registry server definitions
+3. **Pack Inspection**: Examining generated templates and configuration
+4. **Deployment Planning**: Using nomad-pack to preview deployment with static ports
+5. **Live Deployment**: Deploying the MCP server to Nomad cluster with Traefik routing
+6. **Job Verification**: Checking job status and health
+7. **Allocation Inspection**: Examining allocation details and port configuration
+8. **Log Analysis**: Inspecting server logs for troubleshooting
+9. **Claude Code Integration**: Automated token generation and MCP server configuration
+10. **Cleanup**: Gracefully stopping jobs and removing pack artifacts and authentication files
 
 ## Demo Server
 
@@ -23,12 +25,24 @@ The demo uses **com.falkordb/QueryWeaver** as the example MCP server:
 - **Transport Type**: streamable-http (HTTP-based communication)
 - **Image**: `docker.io/falkordb/queryweaver:0.0.11`
 - **Description**: FalkorDB-based MCP server providing graph database capabilities
+- **Port Configuration**: Static host port 8091 (for reliable Traefik routing)
 
 This server was chosen because it:
-- Demonstrates Docker-based deployment
-- Showcases HTTP transport with dynamic port allocation
+- Demonstrates Docker-based deployment with OCI images
+- Showcases HTTP transport with external load balancer integration
 - Is actively maintained and reliable
 - Provides a realistic use case (graph database querying)
+- Requires authentication (demonstrates token generation workflow)
+
+### Port Allocation Strategy
+
+The demo uses **static port allocation** (`host_port=8091`) instead of dynamic ports for these reasons:
+
+- **Simplified Load Balancer Integration**: Traefik can connect directly to port 8091 without requiring Consul service discovery
+- **Predictable Access**: The MCP server is always accessible at the same port across deployments
+- **Reliable Routing**: Eliminates timeout issues that can occur with dynamic port resolution
+
+While Nomad's dynamic port allocation is ideal for most workloads, static ports are simpler for external access scenarios where the load balancer doesn't have Consul integration configured.
 
 ## Prerequisites
 
@@ -62,6 +76,18 @@ export NOMAD_TOKEN="your-nomad-acl-token"
 
    # Linux/Other
    # See: https://www.nomadproject.io/downloads
+   ```
+
+4. **jq** - JSON processor for automated token generation:
+   ```bash
+   # macOS
+   brew install jq
+
+   # Linux (Debian/Ubuntu)
+   apt-get install jq
+
+   # Linux (RHEL/CentOS)
+   yum install jq
    ```
 
 ### Nomad Cluster Requirements
@@ -128,13 +154,14 @@ The demo provides color-coded output:
 1. **Prerequisites Check**: Validates environment and connectivity
 2. **Pack Generation**: Creates Nomad Pack from MCP Registry
 3. **Pack Inspection**: Shows generated files and configuration
-4. **Deployment Planning**: Runs nomad-pack plan (dry-run)
-5. **Deployment Execution**: Deploys to Nomad cluster
+4. **Deployment Planning**: Runs nomad-pack plan (dry-run) with static port configuration
+5. **Deployment Execution**: Deploys to Nomad cluster with static port 8091
 6. **Job Verification**: Checks job status
 7. **Allocation Inspection**: Examines allocation details and ports
 8. **Log Inspection**: Views MCP server startup logs
-9. **Cleanup**: Stops job and removes artifacts
-10. **Summary**: Recaps what was demonstrated
+9. **Connecting to Claude Code**: Automated token generation and MCP server configuration
+10. **Cleanup**: Stops job, removes pack artifacts and authentication files
+11. **Summary**: Recaps what was demonstrated
 
 ### Expected Outputs
 
@@ -158,6 +185,33 @@ Label  Dynamic  Address
 INFO:     Uvicorn running on http://0.0.0.0:5000 (Press CTRL+C to quit)
 INFO:     Application startup complete.
 ```
+
+**Section 8 - Token Generation Example:**
+```
+✓ QueryWeaver backend is ready!
+ℹ Creating QueryWeaver account...
+ℹ Logging in...
+ℹ Generating API token...
+✓ Token generated successfully!
+
+ℹ QUERYWEAVER_TOKEN=a1b2c3d4e5f6...
+
+Run this command to add QueryWeaver to Claude Code:
+
+$ claude mcp add --scope=user --transport=http \
+    --header="Authorization: Bearer a1b2c3d4e5f6..." \
+    queryweaver \
+    'http://hashistack-demo-dc1-7329a99ab7f6a3ba.elb.us-east-1.amazonaws.com/queryweaver/mcp'
+```
+
+**Port Allocation with Static Port:**
+```
+Allocation Addresses:
+Label  Dynamic  Address
+*http  no       10.0.2.199:8091
+```
+
+Note: With static port allocation (`host_port=8091`), the Dynamic column shows "no" and the port is always 8091.
 
 ## Troubleshooting
 
@@ -239,6 +293,29 @@ nomad-pack run \
   .
 ```
 
+### Controlling Demo Log Output
+
+The demo sets `NOMAD_MCP_PACK_LOG_LEVEL=error` for cleaner demonstration output. You can adjust this for debugging:
+
+```bash
+# More verbose output (shows info messages)
+export NOMAD_MCP_PACK_LOG_LEVEL=info
+./demo.sh
+
+# Debug mode (shows all details including pack generation internals)
+export NOMAD_MCP_PACK_LOG_LEVEL=debug
+./demo.sh
+
+# Warning level (only warnings and errors)
+export NOMAD_MCP_PACK_LOG_LEVEL=warn
+./demo.sh
+```
+
+**Available log levels**: `debug`, `info`, `warn`, `error`
+
+**Default in demo**: `error` (cleanest output for presentations)
+**Default in nomad-mcp-pack**: `info` (when not set)
+
 ### Customizing Service Registration
 
 Generated packs for HTTP-based MCP servers automatically include service registration with Consul. You can customize the service configuration:
@@ -261,7 +338,25 @@ nomad-pack run \
 nomad-pack run \
   --var='service_tags=["traefik.enable=true","traefik.http.middlewares.myserver-strip.stripprefix.prefixes=/myserver","traefik.http.routers.myserver.entrypoints=http","traefik.http.routers.myserver.rule=Host(`example.com`) && PathPrefix(`/myserver`)","traefik.http.routers.myserver.middlewares=myserver-strip"]' \
   .
+```
 
+**Understanding Traefik Service Tags:**
+
+The demo configures Traefik for external access with these specific tags:
+
+- `traefik.enable=true` - Enables Traefik routing for this Consul service
+- `traefik.http.middlewares.queryweaver-strip.stripprefix.prefixes=/queryweaver` - Creates a middleware that removes the `/queryweaver` prefix before forwarding requests to the backend
+- `traefik.http.routers.queryweaver-mcp.entrypoints=http` - Routes traffic through HTTP entrypoint (port 80)
+- `traefik.http.routers.queryweaver-mcp.rule=Host(...) && PathPrefix(...)` - Matches requests for specific host and path prefix
+- `traefik.http.routers.queryweaver-mcp.middlewares=queryweaver-strip` - Applies the strip prefix middleware to this router
+- `traefik.http.routers.queryweaver-mcp-secure.tls.certresolver=letsencrypt` - Enables automatic HTTPS with Let's Encrypt
+
+This configuration allows:
+- **External access**: `http://your-load-balancer/queryweaver/mcp`
+- **Container sees**: `/mcp` (prefix `/queryweaver` is stripped by middleware)
+- **Automatic HTTPS**: Let's Encrypt handles TLS certificates
+
+```bash
 # Custom health check intervals
 nomad-pack run \
   --var="health_check_interval=60s" \
@@ -282,7 +377,7 @@ To try different servers, modify `DEMO_SERVER` in demo.sh:
 
 ```bash
 # Other OCI + HTTP servers found in the registry:
-DEMO_SERVER="io.github.eat-pray-ai/yutu"           # Transport: streamable-http
+DEMO_SERVER="io.github.eat-pray-ai/yutu"          # Transport: streamable-http
 DEMO_SERVER="io.github.andrasfe/vulnicheck"       # Transport: streamable-http
 DEMO_SERVER="io.github.jgador/websharp"           # Transport: streamable-http
 ```
@@ -354,28 +449,74 @@ nomad-pack plan --var="region=us-west" --var="datacenters=[\"dc2\",\"dc3\"]" .
 
 After successfully deploying QueryWeaver to your Nomad cluster, you can connect Claude Code (or other MCP clients) to use the server.
 
-### Step 1: Create a QueryWeaver Account
+### Automated Token Generation (Demo Default)
 
-The QueryWeaver MCP server requires authentication. Create an account using the API:
+**Section 9 of the demo automates the entire authentication workflow**. The script:
+
+1. Waits for QueryWeaver backend (FalkorDB) to be fully ready (up to 90 seconds)
+2. Creates a QueryWeaver account via `/signup/email` API
+3. Logs in and saves session cookie to `/tmp/queryweaver_cookies.txt`
+4. Generates an API token using the authenticated session
+5. Provides the complete `claude mcp add` command with your token
+
+**Example Output from Demo:**
+
+```bash
+✓ QueryWeaver backend is ready!
+ℹ Creating QueryWeaver account...
+ℹ Logging in...
+ℹ Generating API token...
+✓ Token generated successfully!
+
+ℹ QUERYWEAVER_TOKEN=abc123xyz456...
+
+Run this command to add QueryWeaver to Claude Code:
+
+$ claude mcp add --scope=user --transport=http \
+    --header="Authorization: Bearer abc123xyz456..." \
+    queryweaver \
+    'http://your-load-balancer/queryweaver/mcp'
+```
+
+Simply copy and run the `claude mcp add` command shown in the demo output.
+
+### Authentication Flow Details
+
+The automated authentication uses **cookie-based sessions** to mirror browser-based authentication:
+
+```mermaid
+sequenceDiagram
+    Demo->>QueryWeaver: POST /signup/email
+    QueryWeaver-->>Demo: Account created
+    Demo->>QueryWeaver: POST /login/email
+    QueryWeaver-->>Demo: Session cookie
+    Note over Demo: Save cookie to /tmp/queryweaver_cookies.txt
+    Demo->>QueryWeaver: POST /tokens/generate (with cookie)
+    QueryWeaver-->>Demo: API token
+    Demo->>User: Display claude mcp add command
+```
+
+### Manual Token Generation (Fallback)
+
+If the automated flow fails or you need to generate a token manually:
+
+**Step 1: Create Account**
 
 ```bash
 # Replace with your Traefik/load balancer URL
 QUERYWEAVER_URL="http://your-nomad-cluster/queryweaver"
 
-# Create account
 curl -X POST ${QUERYWEAVER_URL}/signup/email \
   -H "Content-Type: application/json" \
   -d '{
-    "firstName": "Your",
-    "lastName": "Name",
-    "email": "your.email@example.com",
-    "password": "YourSecurePassword123!"
+    "firstName": "Demo",
+    "lastName": "User",
+    "email": "demo@example.com",
+    "password": "DemoPassword123!"
   }'
 ```
 
-### Step 2: Login and Generate API Token
-
-After creating an account, login and generate an API token:
+**Step 2: Login and Generate Token**
 
 ```bash
 # Login to get session cookie
@@ -383,113 +524,121 @@ curl -X POST ${QUERYWEAVER_URL}/login/email \
   -H "Content-Type: application/json" \
   -c /tmp/queryweaver_cookies.txt \
   -d '{
-    "email": "your.email@example.com",
-    "password": "YourSecurePassword123!"
+    "email": "demo@example.com",
+    "password": "DemoPassword123!"
   }'
 
 # Generate API token using session
-curl -X POST ${QUERYWEAVER_URL}/tokens/generate \
+TOKEN_RESPONSE=$(curl -s -X POST ${QUERYWEAVER_URL}/tokens/generate \
   -b /tmp/queryweaver_cookies.txt \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json")
+
+# Extract token using jq
+QUERYWEAVER_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token_id')
+echo "Token: $QUERYWEAVER_TOKEN"
 ```
 
-This will return a token in the format:
-```json
-{"token_id":"your-token-here","created_at":0}
-```
+**Step 3: Add to Claude Code**
 
-### Step 3: Configure Claude Code
-
-Create or update your Claude Code MCP configuration file at `~/.config/claude-code/mcp.json`:
-
-```json
-{
-  "servers": {
-    "queryweaver": {
-      "type": "http",
-      "url": "http://your-nomad-cluster/queryweaver/mcp",
-      "headers": {
-        "Authorization": "Bearer your-token-here"
-      }
-    }
-  },
-  "inputs": []
-}
-```
-
-Replace:
-- `http://your-nomad-cluster/queryweaver` with your actual Traefik/load balancer URL
-- `your-token-here` with the token_id from step 2
-
-### Step 4: Restart Claude Code
-
-For Claude Code to pick up the new MCP server configuration:
+Use the Claude Code CLI to add the MCP server:
 
 ```bash
-# If running in a terminal session, restart claude
-# The MCP server will be available in the next session
+claude mcp add --scope=user --transport=http \
+  --header="Authorization: Bearer $QUERYWEAVER_TOKEN" \
+  queryweaver \
+  'http://your-load-balancer/queryweaver/mcp'
 ```
 
-### Step 5: Test the Connection
+### Testing the Connection
 
-Once Claude Code restarts, you can ask it to use QueryWeaver's capabilities:
+Once configured, ask Claude Code to use QueryWeaver's capabilities:
 
 - **list_databases** - Retrieve available databases
 - **connect_database** - Establish database connections
 - **database_schema** - Fetch schema information
 - **query_database** - Execute Text2SQL queries
 
-Example: "Use QueryWeaver to list available databases"
+Example: "How many databases do I have connected to QueryWeaver?"
 
-### Troubleshooting MCP Connection
+### Troubleshooting Connection Issues
 
-#### MCP Server Not Responding
+#### Backend Not Ready (Gateway Timeout)
 
-If Claude Code cannot connect to QueryWeaver:
+**Symptom**: API calls return "Gateway Timeout" or 504 errors during token generation.
 
-1. **Verify the deployment is running**:
+**Cause**: QueryWeaver backend (FalkorDB) takes 30-60 seconds to initialize after deployment.
+
+**Solution**: The demo waits automatically. If generating tokens manually, wait 60 seconds after deployment before attempting authentication.
+
+#### Token Generation Fails
+
+**Symptom**: "Failed to parse token response as JSON" or empty token.
+
+**Possible Causes**:
+- Backend not fully initialized (wait longer)
+- Network connectivity issues
+- Invalid credentials
+
+**Solution**:
+1. Verify deployment is running: `nomad job status <job-name>`
+2. Test health endpoint: `curl http://your-load-balancer/queryweaver/docs`
+3. If `/docs` returns 200, retry token generation
+
+#### MCP Server Not Responding in Claude Code
+
+**Symptom**: Claude Code shows "MCP server unavailable" or timeout errors.
+
+**Debugging Steps**:
+
+1. **Verify deployment is running**:
    ```bash
    nomad job status com-falkordb-QueryWeaver-0-0-11-oci-streamable-http
    ```
 
-2. **Test the MCP endpoint manually**:
+2. **Test MCP endpoint directly**:
    ```bash
    curl -i -H 'Accept: text/event-stream' \
-     -H 'Authorization: Bearer your-token' \
-     'http://your-nomad-cluster/queryweaver/mcp'
+     -H "Authorization: Bearer $QUERYWEAVER_TOKEN" \
+     'http://your-load-balancer/queryweaver/mcp'
    ```
 
-   You should get a response indicating the MCP endpoint is active.
+   You should see SSE headers and an MCP protocol response.
 
-3. **Check Traefik routing**:
+3. **Check static port allocation**:
    ```bash
-   nomad job status traefik  # or your load balancer job name
+   nomad alloc status <alloc-id>
    ```
 
-4. **Verify token is valid**:
+   Verify port 8091 is allocated (not a dynamic port).
+
+4. **Verify Traefik routing**:
    ```bash
-   # List your tokens
-   curl -X GET ${QUERYWEAVER_URL}/tokens/list \
-     -b /tmp/queryweaver_cookies.txt
+   curl -i http://your-load-balancer/queryweaver/docs
    ```
 
-#### Token Expired or Invalid
+   Should return 200 OK with QueryWeaver API documentation.
 
-If you get authentication errors, generate a new token:
+#### Token Expired (After Server Restart)
 
+**Important**: QueryWeaver uses ephemeral storage (FalkorDB in-container). **Tokens do not persist across deployments**.
+
+When you redeploy or restart the job, you must:
+1. Generate a new token (either via demo or manually)
+2. Update Claude Code configuration with the new token
+3. Restart your Claude Code session
+
+**Quick token refresh**:
 ```bash
-# Login again
+# Login with existing account
 curl -X POST ${QUERYWEAVER_URL}/login/email \
   -H "Content-Type: application/json" \
   -c /tmp/queryweaver_cookies.txt \
-  -d '{"email":"your.email@example.com","password":"YourPassword"}'
+  -d '{"email":"demo@example.com","password":"DemoPassword123!"}'
 
 # Generate new token
 curl -X POST ${QUERYWEAVER_URL}/tokens/generate \
-  -b /tmp/queryweaver_cookies.txt
+  -b /tmp/queryweaver_cookies.txt | jq -r '.token_id'
 ```
-
-Update the token in `~/.config/claude-code/mcp.json` and restart Claude Code.
 
 ## Next Steps
 
