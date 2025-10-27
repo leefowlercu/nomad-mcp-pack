@@ -52,14 +52,100 @@ cd watch
 
 ---
 
+### [Integration Demo](./integration/)
+
+Demonstrates complete end-to-end workflow from pack generation through live deployment to a Nomad cluster.
+
+**Key Features:**
+- Live Nomad cluster deployment
+- Docker-based MCP server deployment (QueryWeaver)
+- Static port allocation for load balancer integration
+- Automated authentication token generation
+- Traefik routing configuration
+- Claude Code MCP server integration
+- Health checking and verification
+- Complete cleanup workflow
+
+**Quick Start:**
+```bash
+cd integration
+./demo.sh         # Interactive mode
+./demo.sh auto    # Automatic mode
+```
+
+**Important:** This demo requires a live Nomad cluster with proper access credentials. See the [Integration Demo Documentation](./integration/README.md) for detailed prerequisites.
+
+[View Integration Demo Documentation →](./integration/README.md)
+
+---
+
+## Choosing the Right Demo
+
+- **Generate Demo**: CLI-focused demonstration showcasing pack generation features. No infrastructure required. Perfect for understanding the `generate` command.
+
+- **Watch Demo**: CLI-focused demonstration showing continuous monitoring and state management. No infrastructure required. Perfect for understanding the `watch` command.
+
+- **Integration Demo**: Production-focused demonstration requiring a live Nomad cluster. Shows the complete workflow from MCP Registry to deployed server accessible in Claude Code. Perfect for integration testing and production validation.
+
+| Demo | Purpose | Prerequisites | Duration | Cluster Required |
+|------|---------|---------------|----------|------------------|
+| **Generate** | Pack generation CLI features | nomad-mcp-pack only | 2-3 min | No |
+| **Watch** | Continuous monitoring & state tracking | nomad-mcp-pack only | 3-5 min | No |
+| **Integration** | End-to-end deployment workflow | Full Nomad cluster + tooling | 5-10 min | **Yes** |
+
 ## Prerequisites
 
-All demos require:
+### Generate and Watch Demos (CLI Testing)
+
+These demos only require the CLI tool itself:
+
 1. **nomad-mcp-pack installed**: Run `make install` from the project root
 2. **Internet connection**: Required to access the MCP Registry
 3. **Optional tools**:
    - `tree` - Enhanced directory visualization (generate demo)
    - `jq` - JSON state file visualization (watch demo)
+
+### Integration Demo (Live Deployment)
+
+The integration demo requires a full Nomad cluster setup:
+
+**Required Environment Variables:**
+```bash
+export NOMAD_ADDR="http://your-nomad-cluster:4646"
+export NOMAD_TOKEN="your-nomad-acl-token"
+```
+
+**Required Tools:**
+1. **nomad-mcp-pack** - Build from this repository: `make install`
+2. **nomad-pack** - HashiCorp Nomad Pack CLI
+   ```bash
+   # macOS
+   brew install hashicorp/tap/nomad-pack
+
+   # Linux/Other - See: https://github.com/hashicorp/nomad-pack#installation
+   ```
+3. **nomad** - Nomad CLI
+   ```bash
+   # macOS
+   brew install nomad
+
+   # Linux/Other - See: https://www.nomadproject.io/downloads
+   ```
+4. **jq** - JSON processor for automated token generation
+   ```bash
+   # macOS
+   brew install jq
+
+   # Linux (Debian/Ubuntu)
+   apt-get install jq
+   ```
+
+**Nomad Cluster Requirements:**
+- Nomad cluster accessible via `NOMAD_ADDR`
+- ACL token with permissions to submit jobs, read allocations, and view logs
+- Docker driver enabled on Nomad clients
+- Internet access for Docker image pulls
+- Optionally: Traefik load balancer for external access (demonstrated in integration demo)
 
 ## Running Demos
 
@@ -110,10 +196,19 @@ Each demo directory contains:
 ## Cleanup
 
 All demos automatically clean up generated artifacts on exit:
-- Generate demo: Removes `./packs/` directory and any ZIP archives
-- Watch demo: Removes `./packs/`, `./watch-demo.json`, and background processes
+- **Generate demo**: Removes `./packs/` directory and any ZIP archives
+- **Watch demo**: Removes `./packs/`, `./watch-demo.json`, and background processes
+- **Integration demo**: Stops Nomad job, removes `./packs/`, and cleans up authentication artifacts (`/tmp/queryweaver_cookies.txt`)
 
 If cleanup fails for any reason, artifacts are gitignored and can be manually removed.
+
+**Manual cleanup for integration demo:**
+```bash
+cd integration
+nomad job stop <job-name>
+rm -rf packs/
+rm -f /tmp/queryweaver_cookies.txt
+```
 
 ## Customization
 
@@ -150,6 +245,15 @@ Quick verification during feature development using automatic mode. Test changes
 ### Documentation
 Living examples of tool usage patterns. Demo scripts serve as executable documentation that stays current with the codebase.
 
+### Integration Testing (Integration Demo)
+Verify the complete end-to-end workflow from pack generation through Nomad deployment, service registration, and MCP client configuration. Validates that all components work together correctly.
+
+### Production Deployment Validation (Integration Demo)
+Test real-world deployment scenarios including load balancer integration, authentication flows, static port allocation, and health checking before deploying to production environments.
+
+### Training and Onboarding (Integration Demo)
+Hands-on experience with the entire nomad-mcp-pack → Nomad → Claude Code workflow. Ideal for training new team members on HashiCorp Nomad and MCP server deployment patterns.
+
 ## Common Issues
 
 ### Demo Cleanup Fails
@@ -171,6 +275,36 @@ Demos require internet access to the MCP Registry. If you see connection errors:
 - Verify internet connectivity
 - Check firewall settings
 - Confirm registry URL: https://registry.modelcontextprotocol.io
+
+### Missing Environment Variables (Integration Demo)
+If you see "NOMAD_ADDR environment variable is not set":
+```bash
+export NOMAD_ADDR="http://your-nomad-cluster:4646"
+export NOMAD_TOKEN="your-token"
+```
+
+Verify these are set correctly:
+```bash
+echo $NOMAD_ADDR
+echo $NOMAD_TOKEN
+```
+
+### Cluster Connectivity Issues (Integration Demo)
+If the integration demo cannot connect to your Nomad cluster:
+```bash
+# Verify Nomad cluster is accessible
+nomad server members
+nomad node status
+
+# Check ACL token permissions
+nomad acl token self
+```
+
+### Token Generation Failures (Integration Demo)
+If automated token generation fails with "Gateway Timeout" or JSON parsing errors:
+- The QueryWeaver backend (FalkorDB) may not be fully initialized (takes 30-60 seconds)
+- Wait for the health check to complete
+- See the [Integration Demo Documentation](./integration/README.md#troubleshooting-connection-issues) for detailed troubleshooting
 
 ## Contributing
 
