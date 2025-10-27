@@ -84,40 +84,48 @@ type MetadataData struct {
 }
 
 type VariablesData struct {
-	ServerName     string
-	PackageType    string
-	HasEnvironment bool
-	Environment    []model.KeyValueInput
-	HasArguments   bool
-	Arguments      []model.Argument
-	PackageID      string
-	PackageVersion string
+	ServerName            string
+	PackageType           string
+	HasEnvironment        bool
+	Environment           []model.KeyValueInput
+	HasArguments          bool
+	Arguments             []model.Argument
+	PackageID             string
+	PackageVersion        string
+	InferredServiceName   string
+	InferredContainerPort int
+	IsHTTPTransport       bool
 }
 
 type JobData struct {
-	ServerName     string
-	TaskName       string
-	PackageType    string
-	PackageID      string
-	PackageVersion string
-	RegistryURL    string
-	RunTimeHint    string
-	Environment    []model.KeyValueInput
-	RuntimeArgs    []model.Argument
-	PackageArgs    []model.Argument
-	Transport      model.Transport
-	HasTransport   bool
-	NPMExecution   *NPMExecutionData // Add NPM execution pattern info
+	ServerName            string
+	TaskName              string
+	PackageType           string
+	PackageID             string
+	PackageVersion        string
+	RegistryURL           string
+	RunTimeHint           string
+	Environment           []model.KeyValueInput
+	RuntimeArgs           []model.Argument
+	PackageArgs           []model.Argument
+	Transport             model.Transport
+	HasTransport          bool
+	NPMExecution          *NPMExecutionData // Add NPM execution pattern info
+	InferredServiceName   string
+	InferredContainerPort int
 }
 
 type ReadmeData struct {
-	ServerName    string
-	Description   string
-	PackageType   string
-	PackageID     string
-	Version       string
-	RepositoryURL string
-	HasRepository bool
+	ServerName          string
+	Description         string
+	PackageType         string
+	PackageID           string
+	Version             string
+	RepositoryURL       string
+	HasRepository       bool
+	InferredServiceName string
+	IsHTTPTransport     bool
+	ContainerPort       int
 }
 
 func renderMetadataTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error) {
@@ -154,14 +162,17 @@ func renderVariablesTemplate(server *v0.ServerJSON, pkg *model.Package) (string,
 	}
 
 	data := VariablesData{
-		ServerName:     server.Name,
-		PackageType:    pkg.RegistryType,
-		HasEnvironment: len(pkg.EnvironmentVariables) > 0,
-		Environment:    pkg.EnvironmentVariables,
-		HasArguments:   len(validArgs) > 0,
-		Arguments:      validArgs,
-		PackageID:      pkg.Identifier,
-		PackageVersion: pkg.Version,
+		ServerName:            server.Name,
+		PackageType:           pkg.RegistryType,
+		HasEnvironment:        len(pkg.EnvironmentVariables) > 0,
+		Environment:           pkg.EnvironmentVariables,
+		HasArguments:          len(validArgs) > 0,
+		Arguments:             validArgs,
+		PackageID:             pkg.Identifier,
+		PackageVersion:        pkg.Version,
+		InferredServiceName:   inferServiceName(server.Name),
+		InferredContainerPort: inferContainerPort(pkg),
+		IsHTTPTransport:       isHTTPTransport(pkg.Transport),
 	}
 
 	var buf bytes.Buffer
@@ -204,19 +215,21 @@ func renderJobTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error
 	}
 
 	data := JobData{
-		ServerName:     server.Name,
-		TaskName:       sanitizeServerName(server.Name),
-		PackageType:    pkg.RegistryType,
-		PackageID:      pkg.Identifier,
-		PackageVersion: pkg.Version,
-		RegistryURL:    registryURL,
-		RunTimeHint:    pkg.RunTimeHint,
-		Environment:    pkg.EnvironmentVariables,
-		RuntimeArgs:    pkg.RuntimeArguments,
-		PackageArgs:    pkg.PackageArguments,
-		Transport:      pkg.Transport,
-		HasTransport:   pkg.Transport.Type != "",
-		NPMExecution:   npmExecution,
+		ServerName:            server.Name,
+		TaskName:              sanitizeServerName(server.Name),
+		PackageType:           pkg.RegistryType,
+		PackageID:             pkg.Identifier,
+		PackageVersion:        pkg.Version,
+		RegistryURL:           registryURL,
+		RunTimeHint:           pkg.RunTimeHint,
+		Environment:           pkg.EnvironmentVariables,
+		RuntimeArgs:           pkg.RuntimeArguments,
+		PackageArgs:           pkg.PackageArguments,
+		Transport:             pkg.Transport,
+		HasTransport:          pkg.Transport.Type != "",
+		NPMExecution:          npmExecution,
+		InferredServiceName:   inferServiceName(server.Name),
+		InferredContainerPort: inferContainerPort(pkg),
 	}
 
 	var buf bytes.Buffer
@@ -242,13 +255,16 @@ func renderOutputsTemplate(server *v0.ServerJSON) (string, error) {
 
 func renderReadmeTemplate(server *v0.ServerJSON, pkg *model.Package) (string, error) {
 	data := ReadmeData{
-		ServerName:    server.Name,
-		Description:   server.Description,
-		PackageType:   pkg.RegistryType,
-		PackageID:     pkg.Identifier,
-		Version:       server.Version,
-		RepositoryURL: server.Repository.URL,
-		HasRepository: server.Repository.URL != "",
+		ServerName:          server.Name,
+		Description:         server.Description,
+		PackageType:         pkg.RegistryType,
+		PackageID:           pkg.Identifier,
+		Version:             server.Version,
+		RepositoryURL:       server.Repository.URL,
+		HasRepository:       server.Repository.URL != "",
+		InferredServiceName: inferServiceName(server.Name),
+		IsHTTPTransport:     isHTTPTransport(pkg.Transport),
+		ContainerPort:       inferContainerPort(pkg),
 	}
 
 	var buf bytes.Buffer
@@ -306,4 +322,52 @@ func formatArguments(args []model.Argument) string {
 	}
 
 	return strings.Join(parts, "\", \"")
+}
+
+// inferServiceName generates a service name from the MCP server name
+// Example: "com.falkordb/QueryWeaver" -> "queryweaver-mcp"
+func inferServiceName(serverName string) string {
+	// Extract the last component if namespaced
+	parts := strings.Split(serverName, "/")
+	name := parts[len(parts)-1]
+
+	// Sanitize and lowercase
+	sanitized := strings.ToLower(sanitizeServerName(name))
+
+	// Add -mcp suffix
+	return sanitized + "-mcp"
+}
+
+// inferContainerPort determines the container port based on package metadata
+func inferContainerPort(pkg *model.Package) int {
+	// Check runtime hint for common patterns
+	switch strings.ToLower(pkg.RunTimeHint) {
+	case "python", "python3":
+		return 5000 // Common for Flask, FastAPI
+	case "node", "nodejs":
+		return 3000 // Common for Node.js apps
+	case "dotnet", ".net":
+		return 5000 // ASP.NET Core default
+	default:
+		// Check package type
+		switch pkg.RegistryType {
+		case "pypi":
+			return 5000
+		case "npm":
+			return 3000
+		case "oci":
+			// For OCI, try to parse from identifier if it contains common patterns
+			// Otherwise default to 8080
+			return 8080
+		case "nuget":
+			return 5000
+		default:
+			return 8080
+		}
+	}
+}
+
+// isHTTPTransport checks if the transport type requires HTTP networking
+func isHTTPTransport(transport model.Transport) bool {
+	return transport.Type == "streamable-http" || transport.Type == "sse"
 }

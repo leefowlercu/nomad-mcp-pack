@@ -8,7 +8,25 @@ job [[ template "job_name" . ]] {
 
     {{- if or (eq .Transport.Type "streamable-http") (eq .Transport.Type "sse")}}
     network {
-      port "http" {}
+      port "http" {
+        to = [[ var "container_port" . ]]
+        [[ if ne (var "host_port" .) 0 -]]
+        static = [[ var "host_port" . ]]
+        [[- end ]]
+      }
+    }
+
+    service {
+      name = [[ var "service_name" . | quote ]]
+      port = "http"
+
+      tags = [[ var "service_tags" . | toStringList ]]
+
+      check {
+        type     = "tcp"
+        interval = [[ var "health_check_interval" . | quote ]]
+        timeout  = [[ var "health_check_timeout" . | quote ]]
+      }
     }
 
     {{- end}}

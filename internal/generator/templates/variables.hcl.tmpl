@@ -7,7 +7,7 @@ variable "job_name" {
 variable "service_name" {
   description = "The service name for the MCP server"
   type        = string
-  default     = "mcp-server"
+  default     = "{{.InferredServiceName}}"
 }
 
 variable "datacenters" {
@@ -39,7 +39,37 @@ variable "memory" {
   type        = number
   default     = 512
 }
+{{if .IsHTTPTransport}}
+variable "service_tags" {
+  description = "Additional tags for service registration (e.g., Traefik routing tags)"
+  type        = list(string)
+  default     = []
+}
 
+variable "container_port" {
+  description = "The port the container listens on"
+  type        = number
+  default     = {{.InferredContainerPort}}
+}
+
+variable "host_port" {
+  description = "Static host port (0 for dynamic allocation)"
+  type        = number
+  default     = 0
+}
+
+variable "health_check_interval" {
+  description = "Interval for health checks"
+  type        = string
+  default     = "30s"
+}
+
+variable "health_check_timeout" {
+  description = "Timeout for health checks"
+  type        = string
+  default     = "5s"
+}
+{{end}}
 variable "package_name" {
   description = "The npm package name to install"
   type        = string
