@@ -68,6 +68,7 @@ func (w *Watcher) poll(ctx context.Context) error {
 	startTime := time.Now()
 	output.Progress("Starting poll cycle...")
 	slog.Info("starting poll cycle", "start_time", startTime.Format(time.RFC3339))
+	slog.Debug("poll cycle starting", "state_servers_count", len(w.state.Servers))
 
 	// Fetch servers from the registry, applying name filters if provided
 	servers, err := w.fetchServers(ctx)
@@ -95,9 +96,11 @@ func (w *Watcher) poll(ctx context.Context) error {
 
 	// Always update and save state, even if some generations failed
 	w.state.UpdateLastPoll(startTime)
+	slog.Debug("poll cycle saving state", "state_servers_count", len(w.state.Servers))
 	if err := w.state.SaveState(w.config.StateFilePath); err != nil {
 		return fmt.Errorf("failed to save state: %w", err)
 	}
+	slog.Debug("poll cycle state saved", "state_servers_count", len(w.state.Servers))
 
 	// If there were critical errors during generation, log, wrap, and return them
 	var packGenerationErrors *PackGenerationErrors
@@ -345,10 +348,9 @@ func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) err
 		"transport_type", task.Package.Transport.Type,
 	)
 
-	if err := generator.Run(ctx, &task.Server, task.Package, w.generateOpts); err != nil {
-		return err
-	}
+	genErr := generator.Run(ctx, &task.Server, task.Package, w.generateOpts)
 
+	// Parse server name for state tracking
 	now := time.Now()
 	nameSpec, err := server.ParseNameSpec(task.Server.Name)
 	if err != nil {
@@ -356,6 +358,12 @@ func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) err
 	}
 	namespace := nameSpec.Namespace
 	name := nameSpec.Name
+
+	// Update state even if generation failed with ErrPackDirectoryExists
+	// This prevents repeated attempts to generate the same pack
+	if genErr != nil && !errors.Is(genErr, generator.ErrPackDirectoryExists) {
+		return genErr
+	}
 
 	state := &ServerState{
 		Namespace:     namespace,
@@ -367,6 +375,16 @@ func (w *Watcher) generatePack(ctx context.Context, task ServerGenerateTask) err
 		GeneratedAt:   now,
 	}
 	w.state.SetServer(state)
+
+	if genErr != nil {
+		slog.Info("pack directory already exists, state updated to prevent regeneration",
+			"server", serverName,
+			"version", task.Server.Version,
+			"package_type", task.Package.RegistryType,
+			"transport_type", task.Package.Transport.Type,
+		)
+		return genErr // Still return error for non-critical error tracking
+	}
 
 	slog.Info("pack generated successfully",
 		"server", serverName,

@@ -3,6 +3,7 @@ package watcher
 import (
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"os"
 	"sync"
 	"time"
@@ -39,6 +40,7 @@ func LoadState(path string) (*WatchState, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			slog.Debug("state file does not exist, starting with empty state", "path", path)
 			return NewWatchState(), nil
 		}
 		return nil, fmt.Errorf("failed to read state file: %w", err)
@@ -53,12 +55,23 @@ func LoadState(path string) (*WatchState, error) {
 		state.Servers = make(map[string]*ServerState)
 	}
 
+	slog.Debug("state loaded from disk",
+		"path", path,
+		"servers_count", len(state.Servers),
+		"last_poll", state.LastPoll,
+	)
+
 	return &state, nil
 }
 
 func (s *WatchState) SaveState(path string) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+
+	slog.Debug("saving state to disk",
+		"path", path,
+		"servers_count", len(s.Servers),
+	)
 
 	data, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
@@ -76,6 +89,11 @@ func (s *WatchState) SaveState(path string) error {
 		return fmt.Errorf("failed to rename state file: %w", err)
 	}
 
+	slog.Debug("state saved successfully",
+		"path", path,
+		"servers_count", len(s.Servers),
+	)
+
 	return nil
 }
 
@@ -91,7 +109,17 @@ func (s *WatchState) SetServer(server *ServerState) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	s.Servers[server.Key()] = server
+	key := server.Key()
+	s.Servers[key] = server
+	slog.Debug("state updated",
+		"key", key,
+		"namespace", server.Namespace,
+		"name", server.Name,
+		"version", server.Version,
+		"package_type", server.PackageType,
+		"transport_type", server.TransportType,
+		"state_map_size", len(s.Servers),
+	)
 }
 
 // TODO: Update logic to use some form of checksum or hash of the actual Pack data
@@ -104,11 +132,23 @@ func (s *WatchState) NeedsGeneration(namespace, name, version, packageType, tran
 	// Check for existence of key
 	existing, exists := s.Servers[key]
 	if !exists {
+		slog.Debug("state check: pack needs generation (key not in state)",
+			"key", key,
+			"state_map_size", len(s.Servers),
+		)
 		return true
 	}
 
 	// If server exists, but has a newer UpdatedAt, we need to regenerate
-	return updatedAt.After(existing.GeneratedAt)
+	needsRegen := updatedAt.After(existing.GeneratedAt)
+	slog.Debug("state check: pack in state",
+		"key", key,
+		"needs_regeneration", needsRegen,
+		"updated_at", updatedAt,
+		"existing_generated_at", existing.GeneratedAt,
+		"state_map_size", len(s.Servers),
+	)
+	return needsRegen
 }
 
 func (s *WatchState) UpdateLastPoll(t time.Time) {

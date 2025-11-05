@@ -1,7 +1,7 @@
 BINARY_NAME=nomad-mcp-pack
 CMD_PATH=github.com/leefowlercu/nomad-mcp-pack
 INSTALL_DIR=~/go/bin
-VERSION ?= 1.0.0-alpha
+VERSION ?= 1.0.0-alpha-0
 
 all: build
 

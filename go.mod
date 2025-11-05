@@ -3,7 +3,7 @@ module github.com/leefowlercu/nomad-mcp-pack
 go 1.25.1
 
 require (
-	github.com/leefowlercu/go-mcp-registry v0.5.0
+	github.com/leefowlercu/go-mcp-registry v0.6.0
 	github.com/modelcontextprotocol/registry v1.2.3
 	github.com/spf13/cobra v1.10.1
 	github.com/spf13/viper v1.20.1

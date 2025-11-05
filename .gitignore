@@ -54,3 +54,6 @@ nomad-mcp-pack
 # Config files
 config.yaml
 nomad-dev.hcl
+
+# Env files
+.env

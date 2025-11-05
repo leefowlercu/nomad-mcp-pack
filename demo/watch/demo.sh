@@ -304,41 +304,8 @@ main() {
 
     wait_for_user
 
-    # Demo 7: Force overwrite
-    print_header "Demo 7: Force Overwrite"
-    echo "By default, watch won't regenerate existing packs."
-    echo "Use --force-overwrite to regenerate all packs on each poll."
-    echo ""
-
-    print_info "First, let's run watch normally (packs already exist):"
-    print_command "nomad-mcp-pack watch --poll-interval $DEMO_POLL_INTERVAL --output-dir $DEMO_OUTPUT_DIR --state-file $DEMO_STATE_FILE --filter-server-names \"$DEMO_SERVER_FILTER\""
-    wait_for_user
-
-    run_watch_for_duration $DEMO_WATCH_DURATION \
-        --poll-interval "$DEMO_POLL_INTERVAL" \
-        --output-dir "$DEMO_OUTPUT_DIR" \
-        --state-file "$DEMO_STATE_FILE" \
-        --filter-server-names "$DEMO_SERVER_FILTER"
-
-    print_success "No packs regenerated (as expected)\n"
-
-    print_info "Now with --force-overwrite:"
-    print_command "nomad-mcp-pack watch --poll-interval $DEMO_POLL_INTERVAL --output-dir $DEMO_OUTPUT_DIR --state-file $DEMO_STATE_FILE --filter-server-names \"$DEMO_SERVER_FILTER\" --force-overwrite"
-    wait_for_user
-
-    run_watch_for_duration $DEMO_WATCH_DURATION \
-        --poll-interval "$DEMO_POLL_INTERVAL" \
-        --output-dir "$DEMO_OUTPUT_DIR" \
-        --state-file "$DEMO_STATE_FILE" \
-        --filter-server-names "$DEMO_SERVER_FILTER" \
-        --force-overwrite
-
-    print_success "Packs regenerated with --force-overwrite!"
-
-    wait_for_user
-
-    # Demo 8: Help and configuration
-    print_header "Demo 8: Help and Configuration"
+    # Demo 7: Help and configuration
+    print_header "Demo 7: Help and Configuration"
     echo "The watch command provides comprehensive help and supports configuration."
     echo ""
 
@@ -374,7 +341,6 @@ main() {
     echo "  ✓ Dry-run mode for testing"
     echo "  ✓ Multiple filters combined"
     echo "  ✓ Concurrent generation control"
-    echo "  ✓ Force overwrite capability"
     echo "  ✓ Graceful shutdown handling"
     echo "  ✓ Comprehensive help system"
     echo ""
