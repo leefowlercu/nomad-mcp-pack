@@ -8,11 +8,23 @@ Generate [HashiCorp Nomad Packs](https://github.com/hashicorp/nomad-pack) from [
 - **Multiple Package Types**: Support for npm, pypi, OCI containers, and NuGet
 - **Transport Protocols**: stdio, HTTP, and Server-Sent Events (SSE)
 - **Continuous Monitoring**: Watch mode for automated pack updates
-- **End-to-End Deployment**: Complete workflow from registry to running MCP servers
-- **Claude Code Integration**: Deploy MCP servers accessible in Claude Code
-- **Static Port Allocation**: Support for load balancer integration
 - **Dry-Run Mode**: Preview changes before execution
-- **HTTP API Server** (Coming Soon): Remote pack generation via REST API
+- **HTTP API Server** (Not Yet Implemented): Remote pack generation via REST API
+
+## How It Works
+
+nomad-mcp-pack automates the process of creating Nomad Pack definitions for MCP servers:
+
+1. **Query MCP Registry**: Connects to the MCP Registry API to discover available servers
+2. **Resolve Version**: Converts `@latest` syntax to specific semantic versions
+3. **Validate Server**: Checks server status (active/deprecated/deleted) and availability
+4. **Select Package & Transport**: Auto-detects or uses specified package type (npm/pypi/oci/nuget) and transport protocol (stdio/http/sse)
+5. **Generate from Templates**: Renders Nomad job specifications using embedded templates with appropriate driver selection:
+   - **Docker driver** for OCI container images
+   - **Exec driver** for npm, pypi, and nuget packages with runtime installation
+6. **Output Pack**: Creates pack directory or ZIP archive with metadata, variables, templates, and documentation
+
+The generated packs are standard Nomad Pack definitions that can be deployed directly to Nomad clusters using `nomad-pack run`.
 
 ## Quick Start
 
@@ -20,15 +32,18 @@ Generate [HashiCorp Nomad Packs](https://github.com/hashicorp/nomad-pack) from [
 # Install the tool
 go install github.com/leefowlercu/nomad-mcp-pack@latest
 
+# Check version
+nomad-mcp-pack --version
+
 # Generate a pack for an MCP server
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest
 
 # Watch for new/updated servers and auto-generate packs
 nomad-mcp-pack watch --poll-interval 300
 
 # Deploy a generated pack to Nomad cluster
 # (Directory name is sanitized: slashes→dashes, dots→dashes)
-cd packs/io-github-datastax-astra-db-mcp-<version>-<package>-<transport>
+cd packs/com-falkordb-QueryWeaver-<version>-<package>-<transport>
 nomad-pack run .
 ```
 
@@ -72,25 +87,25 @@ Generate a Nomad Pack for a specific MCP Server version:
 
 ```bash
 # Generate pack for latest version
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest
 
 # Generate pack for specific version
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@0.0.1-seed
+nomad-mcp-pack generate com.falkordb/QueryWeaver@0.0.11
 
 # Specify package type (npm, pypi, oci, nuget)
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --package-type oci
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --package-type oci
 
 # Generate as ZIP archive instead of directory
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --output-type archive
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --output-type archive
 
 # Dry run to preview without creating files
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --dry-run
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --dry-run
 
 # Force overwrite existing pack
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --force-overwrite
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --force-overwrite
 
 # Silent mode - suppress user-facing output (errors still shown)
-nomad-mcp-pack generate io.github.datastax/astra-db-mcp@latest --silent
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --silent
 ```
 
 ### Watch Command
@@ -105,7 +120,7 @@ nomad-mcp-pack watch
 nomad-mcp-pack watch --poll-interval 60
 
 # Filter by exact server names
-nomad-mcp-pack watch --filter-server-names "io.github.fastapi/fastapi-mcp,io.github.example/sql-server"
+nomad-mcp-pack watch --filter-server-names "com.falkordb/QueryWeaver,io.github.pshivapr/selenium-mcp"
 
 # Filter by package types
 nomad-mcp-pack watch --filter-package-types "oci,npm"
@@ -284,7 +299,7 @@ env: prod
 
 watch:
   poll_interval: 300
-  filter_server_names: ["io.github.fastapi/fastapi-mcp", "io.github.example/database-server"]
+  filter_server_names: ["com.falkordb/QueryWeaver", "io.github.pshivapr/selenium-mcp"]
   filter_package_types: ["oci", "npm"]
   max_concurrent: 5
 
@@ -345,10 +360,10 @@ com-falkordb-QueryWeaver-0-0-11-oci-http/
 **metadata.hcl**:
 ```hcl
 app {
-  name        = "astra-db-mcp"
-  version     = "0.0.1-seed"
-  description = "DataStax Astra DB MCP Server"
-  url         = "https://registry.modelcontextprotocol.io/servers/io.github.datastax/astra-db-mcp"
+  name        = "QueryWeaver"
+  version     = "0.0.11"
+  description = "FalkorDB QueryWeaver MCP Server"
+  url         = "https://registry.modelcontextprotocol.io/servers/com.falkordb/QueryWeaver"
 }
 ```
 
@@ -439,23 +454,22 @@ nomad-mcp-pack watch \
 
 ```bash
 # Generate pack for Docker-based MCP server
-nomad-mcp-pack generate io.github.your-org/queryweaver@latest --package-type oci
+nomad-mcp-pack generate com.falkordb/QueryWeaver@latest --package-type oci
 
 # Deploy to Nomad cluster with static port
-cd packs/io-github-your-org-queryweaver-<version>-oci-http
+cd packs/com-falkordb-QueryWeaver-<version>-oci-streamable-http
 nomad-pack run . \
   --var="host_port=8091" \
   --var='service_tags=["traefik.enable=true"]'
 
 # Verify deployment
-nomad job status io-github-your-org-queryweaver-<version>-oci-http
+nomad job status com-falkordb-QueryWeaver-<version>-oci-streamable-http
 ```
 
 ## Limitations
 
 Current known limitations of nomad-mcp-pack:
 
-- **No Version Command**: There is no built-in command to check the tool version. This feature is planned for a future release.
 - **Watch Poll Interval Minimum**: The watch command enforces a minimum poll interval of 30 seconds to avoid overloading the MCP Registry.
 - **No Wildcard Filter Support**: Server name filters in watch command require exact matches. Wildcards or regex patterns are not supported.
 - **State File Location**: The watch command state file must be a local filesystem path. Remote storage (S3, etc.) is not supported.
@@ -678,6 +692,73 @@ nomad-mcp-pack generate server-name@latest --output-dir ~/my-packs
 # Or fix permissions on the packs directory
 chmod 755 ./packs
 ```
+
+## Development
+
+### Building from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/leefowlercu/nomad-mcp-pack.git
+cd nomad-mcp-pack
+
+# Build binary
+make build
+
+# Install to ~/go/bin
+make install
+```
+
+### Running Tests
+
+```bash
+# Run all tests (unit + integration)
+make test
+
+# Run only unit tests
+make test-unit
+
+# Run integration tests
+make test-integration
+
+# Integration tests with verbose output
+make test-integration-verbose
+```
+
+### Local MCP Registry for Testing
+
+For testing against a local MCP Registry instance:
+
+```bash
+# Initialize registry submodule (first time only)
+make registry-init
+
+# Start local registry (requires Docker)
+make registry-up
+
+# View registry logs
+make registry-logs
+
+# Stop local registry
+make registry-down
+
+# Update registry to latest version
+make registry-update
+```
+
+The local registry runs on `http://localhost:8080` and includes seed data for testing.
+
+### Build Configuration
+
+- **Binary name**: `nomad-mcp-pack`
+- **Version injection**: Set via ldflags at build time
+- **Default version**: `1.0.0-alpha-0`
+- **Install location**: `~/go/bin`
+
+### Additional Make Targets
+
+- `make clean` - Remove build artifacts and test output files
+- `make rebuild` - Clean and rebuild from scratch
 
 ## Help & Support
 
