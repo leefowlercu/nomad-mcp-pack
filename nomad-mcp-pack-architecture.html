@@ -1,0 +1,1061 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>nomad-mcp-pack Architecture Diagram</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --bg-tertiary: #21262d;
+      --border-color: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #6e7681;
+      --accent-blue: #58a6ff;
+      --accent-green: #3fb950;
+      --accent-purple: #a371f7;
+      --accent-orange: #d29922;
+      --accent-red: #f85149;
+      --accent-cyan: #79c0ff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .controls {
+      width: 320px;
+      min-width: 320px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border-color);
+      overflow-y: auto;
+      padding: 16px;
+    }
+
+    .preview {
+      flex: 1;
+      overflow: auto;
+      padding: 24px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    h1 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .control-group {
+      margin-bottom: 12px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent-blue);
+    }
+
+    .checkbox-group label {
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    select {
+      width: 100%;
+      padding: 8px 10px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 13px;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+
+    .preset-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .preset-btn {
+      padding: 6px 12px;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .preset-btn:hover {
+      background: var(--border-color);
+      border-color: var(--accent-blue);
+    }
+
+    .preset-btn.active {
+      background: var(--accent-blue);
+      border-color: var(--accent-blue);
+      color: #fff;
+    }
+
+    .prompt-area {
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border-color);
+      padding: 16px;
+    }
+
+    .prompt-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .prompt-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      letter-spacing: 0.5px;
+    }
+
+    .copy-btn {
+      padding: 6px 12px;
+      background: var(--accent-green);
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .copy-btn:hover {
+      opacity: 0.9;
+    }
+
+    .copy-btn.copied {
+      background: var(--accent-purple);
+    }
+
+    .prompt-content {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Mono', monospace;
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-primary);
+      background: var(--bg-tertiary);
+      padding: 12px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      max-height: 150px;
+      overflow-y: auto;
+    }
+
+    /* Diagram Styles */
+    .diagram {
+      min-width: 1100px;
+      min-height: 800px;
+    }
+
+    .layer {
+      margin-bottom: 24px;
+    }
+
+    .layer-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      padding-left: 8px;
+    }
+
+    .layer-content {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .node {
+      background: var(--bg-secondary);
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 20px;
+      min-width: 180px;
+      text-align: center;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+
+    .node:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .node.highlight {
+      border-color: var(--accent-blue);
+      box-shadow: 0 0 20px rgba(88, 166, 255, 0.2);
+    }
+
+    .node-icon {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .node-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+
+    .node-subtitle {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .node-badge {
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      background: var(--accent-blue);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Color coding for different node types */
+    .node.publisher { border-color: var(--accent-purple); }
+    .node.publisher .node-badge { background: var(--accent-purple); }
+
+    .node.registry { border-color: var(--accent-orange); }
+    .node.registry .node-badge { background: var(--accent-orange); }
+
+    .node.cli { border-color: var(--accent-green); }
+    .node.cli .node-badge { background: var(--accent-green); }
+
+    .node.nomad { border-color: var(--accent-cyan); }
+    .node.nomad .node-badge { background: var(--accent-cyan); }
+
+    .node.operator { border-color: var(--accent-red); }
+    .node.operator .node-badge { background: var(--accent-red); }
+
+    /* Connection arrows */
+    .connections {
+      display: flex;
+      justify-content: center;
+      margin: 16px 0;
+      gap: 60px;
+    }
+
+    .arrow {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-muted);
+    }
+
+    .arrow-line {
+      width: 2px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--border-color), var(--text-muted));
+      position: relative;
+    }
+
+    .arrow-line::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 6px solid transparent;
+      border-right: 6px solid transparent;
+      border-top: 8px solid var(--text-muted);
+    }
+
+    .arrow-label {
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 8px;
+      padding: 4px 10px;
+      background: var(--bg-tertiary);
+      border-radius: 4px;
+    }
+
+    /* Detail panel */
+    .detail-panel {
+      margin-top: 24px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      max-width: 900px;
+    }
+
+    .detail-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .detail-item {
+      background: var(--bg-tertiary);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .detail-item-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .detail-item-content {
+      font-size: 12px;
+      color: var(--text-primary);
+      line-height: 1.5;
+    }
+
+    .detail-item-content code {
+      font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+      background: var(--bg-primary);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+
+    /* Flow indicators */
+    .flow-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      background: var(--accent-blue);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Internal structure diagram */
+    .internal-structure {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    .package-tree {
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .package-tree .folder {
+      color: var(--accent-orange);
+    }
+
+    .package-tree .file {
+      color: var(--text-primary);
+    }
+
+    .package-tree .comment {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <h1>Architecture Explorer</h1>
+
+      <div class="section">
+        <div class="section-title">Presets</div>
+        <div class="preset-buttons">
+          <button class="preset-btn active" data-preset="full">Full System</button>
+          <button class="preset-btn" data-preset="publisher">Publisher Flow</button>
+          <button class="preset-btn" data-preset="consumer">Consumer Flow</button>
+          <button class="preset-btn" data-preset="internal">CLI Internals</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Visible Layers</div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="showPublishers" checked>
+          <label for="showPublishers">MCP Server Publishers</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="showRegistry" checked>
+          <label for="showRegistry">MCP Registry</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="showCLI" checked>
+          <label for="showCLI">nomad-mcp-pack CLI</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="showNomad" checked>
+          <label for="showNomad">HashiCorp Nomad</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="showOperators" checked>
+          <label for="showOperators">End Users / Operators</label>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Detail Level</div>
+        <div class="control-group">
+          <select id="detailLevel">
+            <option value="overview">Overview</option>
+            <option value="components">Show Components</option>
+            <option value="dataflow">Show Data Flow</option>
+            <option value="internals">Show CLI Internals</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Highlight</div>
+        <div class="control-group">
+          <select id="highlight">
+            <option value="none">None</option>
+            <option value="generate">Generate Command Flow</option>
+            <option value="watch">Watch Command Flow</option>
+            <option value="publish">Publish Flow</option>
+            <option value="deploy">Deploy Flow</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Package Types</div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="pkgNpm" checked>
+          <label for="pkgNpm">npm (exec driver)</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="pkgPypi" checked>
+          <label for="pkgPypi">pypi (exec driver)</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="pkgOci" checked>
+          <label for="pkgOci">OCI (docker driver)</label>
+        </div>
+        <div class="checkbox-group">
+          <input type="checkbox" id="pkgNuget" checked>
+          <label for="pkgNuget">NuGet (exec driver)</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview">
+      <div class="diagram" id="diagram"></div>
+    </div>
+  </div>
+
+  <div class="prompt-area">
+    <div class="prompt-header">
+      <span class="prompt-title">Architecture Description</span>
+      <button class="copy-btn" id="copyBtn">Copy</button>
+    </div>
+    <div class="prompt-content" id="promptOutput"></div>
+  </div>
+
+  <script>
+    const DEFAULTS = {
+      showPublishers: true,
+      showRegistry: true,
+      showCLI: true,
+      showNomad: true,
+      showOperators: true,
+      detailLevel: 'overview',
+      highlight: 'none',
+      pkgNpm: true,
+      pkgPypi: true,
+      pkgOci: true,
+      pkgNuget: true
+    };
+
+    const state = { ...DEFAULTS };
+
+    function updateAll() {
+      renderDiagram();
+      updatePrompt();
+    }
+
+    function renderDiagram() {
+      const diagram = document.getElementById('diagram');
+      let html = '';
+
+      // Layer 1: Publishers
+      if (state.showPublishers) {
+        html += `
+          <div class="layer" id="layer-publishers">
+            <div class="layer-label">MCP Server Publishers</div>
+            <div class="layer-content">
+              <div class="node publisher ${state.highlight === 'publish' ? 'highlight' : ''}">
+                <div class="node-badge">Author</div>
+                <div class="node-icon">👨‍💻</div>
+                <div class="node-title">MCP Server Developer</div>
+                <div class="node-subtitle">Creates MCP servers</div>
+              </div>
+              <div class="node publisher ${state.highlight === 'publish' ? 'highlight' : ''}">
+                <div class="node-icon">📦</div>
+                <div class="node-title">Package Registry</div>
+                <div class="node-subtitle">npm / PyPI / OCI / NuGet</div>
+              </div>
+              <div class="node publisher ${state.highlight === 'publish' ? 'highlight' : ''}">
+                <div class="node-icon">🔧</div>
+                <div class="node-title">mcp-registry CLI</div>
+                <div class="node-subtitle">publish command</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Arrow: Publishers -> Registry
+      if (state.showPublishers && state.showRegistry) {
+        html += `
+          <div class="connections">
+            <div class="arrow">
+              <div class="arrow-line"></div>
+              <div class="arrow-label">Publish MCP Server Metadata</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Layer 2: MCP Registry
+      if (state.showRegistry) {
+        html += `
+          <div class="layer" id="layer-registry">
+            <div class="layer-label">MCP Registry (registry.modelcontextprotocol.io)</div>
+            <div class="layer-content">
+              <div class="node registry ${state.highlight === 'publish' || state.highlight === 'generate' || state.highlight === 'watch' ? 'highlight' : ''}">
+                <div class="node-badge">Central</div>
+                <div class="node-icon">🗂️</div>
+                <div class="node-title">MCP Registry API</div>
+                <div class="node-subtitle">v0.1 REST API</div>
+              </div>
+              <div class="node registry">
+                <div class="node-icon">📋</div>
+                <div class="node-title">Server Catalog</div>
+                <div class="node-subtitle">Name, version, packages</div>
+              </div>
+              <div class="node registry">
+                <div class="node-icon">🔍</div>
+                <div class="node-title">Search & Filter</div>
+                <div class="node-subtitle">By type, transport, status</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Arrow: Registry -> CLI
+      if (state.showRegistry && state.showCLI) {
+        html += `
+          <div class="connections">
+            <div class="arrow">
+              <div class="arrow-line"></div>
+              <div class="arrow-label">Query Server Metadata (go-mcp-registry client)</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Layer 3: nomad-mcp-pack CLI
+      if (state.showCLI) {
+        html += `
+          <div class="layer" id="layer-cli">
+            <div class="layer-label">nomad-mcp-pack CLI Tool</div>
+            <div class="layer-content">
+              <div class="node cli ${state.highlight === 'generate' ? 'highlight' : ''}">
+                <div class="node-badge">Command</div>
+                <div class="node-icon">⚡</div>
+                <div class="node-title">generate</div>
+                <div class="node-subtitle">One-time pack generation</div>
+              </div>
+              <div class="node cli ${state.highlight === 'watch' ? 'highlight' : ''}">
+                <div class="node-badge">Command</div>
+                <div class="node-icon">👁️</div>
+                <div class="node-title">watch</div>
+                <div class="node-subtitle">Continuous monitoring</div>
+              </div>
+              <div class="node cli">
+                <div class="node-icon">🛠️</div>
+                <div class="node-title">Pack Generator</div>
+                <div class="node-subtitle">Templates → HCL files</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Show CLI internals if selected
+        if (state.detailLevel === 'internals') {
+          html += `
+            <div class="detail-panel">
+              <div class="detail-title">📁 CLI Internal Structure</div>
+              <div class="internal-structure">
+                <div class="package-tree">
+<span class="folder">cmd/</span>
+├── <span class="file">root.go</span> <span class="comment"># Root command</span>
+├── <span class="folder">generate/</span>
+│   └── <span class="file">generate.go</span> <span class="comment"># One-time generation</span>
+├── <span class="folder">watch/</span>
+│   └── <span class="file">watch.go</span> <span class="comment"># Continuous monitoring</span>
+└── <span class="folder">version/</span>
+    └── <span class="file">version.go</span>
+
+<span class="folder">internal/</span>
+├── <span class="folder">generator/</span>
+│   ├── <span class="file">generator.go</span> <span class="comment"># Pack generation logic</span>
+│   ├── <span class="file">templates.go</span> <span class="comment"># HCL template rendering</span>
+│   └── <span class="file">npm.go</span> <span class="comment"># Driver-specific config</span>
+├── <span class="folder">server/</span>
+│   ├── <span class="file">server.go</span> <span class="comment"># Registry client wrapper</span>
+│   └── <span class="file">types.go</span> <span class="comment"># Server spec parsing</span>
+├── <span class="folder">watcher/</span>
+│   ├── <span class="file">watcher.go</span> <span class="comment"># Polling loop</span>
+│   └── <span class="file">state.go</span> <span class="comment"># State persistence</span>
+└── <span class="folder">config/</span>
+    └── <span class="file">config.go</span> <span class="comment"># Viper configuration</span>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      // Arrow: CLI -> Nomad Packs
+      if (state.showCLI && state.showNomad) {
+        html += `
+          <div class="connections">
+            <div class="arrow">
+              <div class="arrow-line"></div>
+              <div class="arrow-label">Generate Nomad Pack (HCL templates)</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Layer 4: Nomad Packs Output
+      if (state.showNomad) {
+        const pkgTypes = [];
+        if (state.pkgNpm) pkgTypes.push('npm');
+        if (state.pkgPypi) pkgTypes.push('pypi');
+        if (state.pkgOci) pkgTypes.push('OCI');
+        if (state.pkgNuget) pkgTypes.push('NuGet');
+
+        html += `
+          <div class="layer" id="layer-packs">
+            <div class="layer-label">Generated Nomad Packs</div>
+            <div class="layer-content">
+              ${state.pkgNpm ? `
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">exec</div>
+                <div class="node-icon">📦</div>
+                <div class="node-title">npm Pack</div>
+                <div class="node-subtitle">npx execution</div>
+              </div>
+              ` : ''}
+              ${state.pkgPypi ? `
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">exec</div>
+                <div class="node-icon">🐍</div>
+                <div class="node-title">pypi Pack</div>
+                <div class="node-subtitle">uvx execution</div>
+              </div>
+              ` : ''}
+              ${state.pkgOci ? `
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">docker</div>
+                <div class="node-icon">🐳</div>
+                <div class="node-title">OCI Pack</div>
+                <div class="node-subtitle">Container image</div>
+              </div>
+              ` : ''}
+              ${state.pkgNuget ? `
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">exec</div>
+                <div class="node-icon">🔷</div>
+                <div class="node-title">NuGet Pack</div>
+                <div class="node-subtitle">dotnet execution</div>
+              </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+
+        // Show pack structure if components detail level
+        if (state.detailLevel === 'components' || state.detailLevel === 'internals') {
+          html += `
+            <div class="detail-panel">
+              <div class="detail-title">📄 Generated Pack Structure</div>
+              <div class="detail-grid">
+                <div class="detail-item">
+                  <div class="detail-item-title">metadata.hcl</div>
+                  <div class="detail-item-content">Pack name, version, description, and app URL pointing to MCP Registry</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-item-title">variables.hcl</div>
+                  <div class="detail-item-content">Configurable variables: <code>job_name</code>, <code>datacenters</code>, <code>resources</code>, <code>env_vars</code></div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-item-title">templates/mcp-server.nomad.tpl</div>
+                  <div class="detail-item-content">Nomad job spec with driver config (exec or docker) and transport settings</div>
+                </div>
+                <div class="detail-item">
+                  <div class="detail-item-title">outputs.tpl</div>
+                  <div class="detail-item-content">Pack output displaying job name and allocation info</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }
+
+        // Arrow: Packs -> Nomad Cluster
+        html += `
+          <div class="connections">
+            <div class="arrow">
+              <div class="arrow-line"></div>
+              <div class="arrow-label">nomad-pack run / plan</div>
+            </div>
+          </div>
+        `;
+
+        // Nomad Cluster
+        html += `
+          <div class="layer" id="layer-nomad">
+            <div class="layer-label">HashiCorp Nomad Cluster</div>
+            <div class="layer-content">
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">Server</div>
+                <div class="node-icon">🏛️</div>
+                <div class="node-title">Nomad Server</div>
+                <div class="node-subtitle">Job scheduling</div>
+              </div>
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-badge">Client</div>
+                <div class="node-icon">💻</div>
+                <div class="node-title">Nomad Client</div>
+                <div class="node-subtitle">Task execution</div>
+              </div>
+              <div class="node nomad ${state.highlight === 'deploy' ? 'highlight' : ''}">
+                <div class="node-icon">🔌</div>
+                <div class="node-title">MCP Server Task</div>
+                <div class="node-subtitle">Running allocation</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Arrow: Nomad -> Operators
+      if (state.showNomad && state.showOperators) {
+        html += `
+          <div class="connections">
+            <div class="arrow">
+              <div class="arrow-line"></div>
+              <div class="arrow-label">MCP Protocol (stdio/SSE)</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Layer 5: Operators / End Users
+      if (state.showOperators) {
+        html += `
+          <div class="layer" id="layer-operators">
+            <div class="layer-label">End Users</div>
+            <div class="layer-content">
+              <div class="node operator">
+                <div class="node-badge">DevOps</div>
+                <div class="node-icon">🔧</div>
+                <div class="node-title">Platform Engineer</div>
+                <div class="node-subtitle">Runs nomad-mcp-pack</div>
+              </div>
+              <div class="node operator">
+                <div class="node-badge">User</div>
+                <div class="node-icon">🤖</div>
+                <div class="node-title">AI Application</div>
+                <div class="node-subtitle">Claude, GPT, etc.</div>
+              </div>
+              <div class="node operator">
+                <div class="node-badge">User</div>
+                <div class="node-icon">👤</div>
+                <div class="node-title">Developer</div>
+                <div class="node-subtitle">Uses MCP tools</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Data flow detail
+      if (state.detailLevel === 'dataflow') {
+        html += `
+          <div class="detail-panel">
+            <div class="detail-title">🔄 Data Flow Summary</div>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <div class="detail-item-title"><span class="flow-number">1</span> Publish</div>
+                <div class="detail-item-content">MCP server developer publishes package to npm/PyPI/OCI and registers metadata with MCP Registry</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-item-title"><span class="flow-number">2</span> Discover</div>
+                <div class="detail-item-content">nomad-mcp-pack queries MCP Registry API to discover available servers and their package configurations</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-item-title"><span class="flow-number">3</span> Generate</div>
+                <div class="detail-item-content">CLI generates Nomad Pack with appropriate driver (exec/docker) and transport settings (stdio/SSE)</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-item-title"><span class="flow-number">4</span> Deploy</div>
+                <div class="detail-item-content">Platform engineer runs <code>nomad-pack run</code> to deploy MCP server as Nomad job</div>
+              </div>
+              <div class="detail-item">
+                <div class="detail-item-title"><span class="flow-number">5</span> Connect</div>
+                <div class="detail-item-content">AI applications connect to MCP server via configured transport protocol</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      diagram.innerHTML = html;
+    }
+
+    function updatePrompt() {
+      const parts = [];
+
+      // Build description based on visible layers and options
+      parts.push('This architecture diagram shows the nomad-mcp-pack system');
+
+      const visibleLayers = [];
+      if (state.showPublishers) visibleLayers.push('MCP server publishers');
+      if (state.showRegistry) visibleLayers.push('the MCP Registry');
+      if (state.showCLI) visibleLayers.push('the nomad-mcp-pack CLI tool');
+      if (state.showNomad) visibleLayers.push('HashiCorp Nomad');
+      if (state.showOperators) visibleLayers.push('end users');
+
+      if (visibleLayers.length > 0) {
+        parts.push(`displaying: ${visibleLayers.join(', ')}`);
+      }
+
+      // Package types shown
+      const pkgTypes = [];
+      if (state.pkgNpm) pkgTypes.push('npm (exec driver)');
+      if (state.pkgPypi) pkgTypes.push('pypi (exec driver)');
+      if (state.pkgOci) pkgTypes.push('OCI (docker driver)');
+      if (state.pkgNuget) pkgTypes.push('NuGet (exec driver)');
+
+      if (pkgTypes.length > 0 && pkgTypes.length < 4) {
+        parts.push(`\n\nPackage types shown: ${pkgTypes.join(', ')}`);
+      }
+
+      // Detail level
+      if (state.detailLevel !== 'overview') {
+        const detailDescriptions = {
+          components: 'Generated pack structure (metadata.hcl, variables.hcl, job templates)',
+          dataflow: 'End-to-end data flow from publish to deploy',
+          internals: 'CLI internal package structure (cmd/, internal/generator/, internal/watcher/)'
+        };
+        parts.push(`\n\nDetail: ${detailDescriptions[state.detailLevel]}`);
+      }
+
+      // Highlight
+      if (state.highlight !== 'none') {
+        const highlightDescriptions = {
+          generate: 'the generate command flow (Registry → CLI → Nomad Pack)',
+          watch: 'the watch command flow (continuous polling with state persistence)',
+          publish: 'the publish flow (Developer → Package Registry → MCP Registry)',
+          deploy: 'the deploy flow (Nomad Pack → Nomad Cluster → Running MCP Server)'
+        };
+        parts.push(`\n\nHighlighting: ${highlightDescriptions[state.highlight]}`);
+      }
+
+      // Key relationships
+      parts.push('\n\nKey flows:');
+      parts.push('• MCP server developers publish to package registries (npm/PyPI/OCI) and register with MCP Registry');
+      parts.push('• nomad-mcp-pack discovers servers via go-mcp-registry client library');
+      parts.push('• generate command: one-time pack creation for specific server@version');
+      parts.push('• watch command: continuous polling with state file to track generated packs');
+      parts.push('• Generated packs use exec driver (npm/pypi/nuget) or docker driver (OCI)');
+      parts.push('• Platform engineers deploy packs to Nomad using nomad-pack CLI');
+
+      document.getElementById('promptOutput').textContent = parts.join('\n');
+    }
+
+    // Event listeners
+    document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        state[e.target.id] = e.target.checked;
+        updateAll();
+      });
+    });
+
+    document.querySelectorAll('select').forEach(select => {
+      select.addEventListener('change', (e) => {
+        state[e.target.id] = e.target.value;
+        updateAll();
+      });
+    });
+
+    // Preset buttons
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+
+        const preset = e.target.dataset.preset;
+
+        switch (preset) {
+          case 'full':
+            Object.assign(state, DEFAULTS);
+            break;
+          case 'publisher':
+            Object.assign(state, {
+              showPublishers: true,
+              showRegistry: true,
+              showCLI: false,
+              showNomad: false,
+              showOperators: false,
+              detailLevel: 'overview',
+              highlight: 'publish'
+            });
+            break;
+          case 'consumer':
+            Object.assign(state, {
+              showPublishers: false,
+              showRegistry: true,
+              showCLI: true,
+              showNomad: true,
+              showOperators: true,
+              detailLevel: 'dataflow',
+              highlight: 'deploy'
+            });
+            break;
+          case 'internal':
+            Object.assign(state, {
+              showPublishers: false,
+              showRegistry: true,
+              showCLI: true,
+              showNomad: true,
+              showOperators: false,
+              detailLevel: 'internals',
+              highlight: 'none'
+            });
+            break;
+        }
+
+        // Sync checkboxes and selects
+        document.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+          cb.checked = state[cb.id];
+        });
+        document.querySelectorAll('select').forEach(sel => {
+          sel.value = state[sel.id];
+        });
+
+        updateAll();
+      });
+    });
+
+    // Copy button
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      const text = document.getElementById('promptOutput').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = 'Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+
+    // Initial render
+    updateAll();
+  </script>
+</body>
+</html>
